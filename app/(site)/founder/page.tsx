@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -20,16 +21,16 @@ export default function FounderPage() {
       <article className="bg-ivory py-16 md:py-24">
         <div className="mx-auto max-w-[680px] px-5">
 
-          {/* ── Portrait placeholder ──────────────────────────────── */}
-          {/*
-           * Replace the div + initial with a Next.js <Image fill> inside
-           * this same container once a real portrait photo is available.
-           */}
-          <div
-            aria-hidden
-            className="mx-auto mb-8 flex h-32 w-32 select-none items-center justify-center rounded-full bg-blush/50 shadow-md ring-2 ring-gold/40 ring-offset-[6px] ring-offset-ivory"
-          >
-            <span className="font-heading italic text-5xl text-terracotta/45">A</span>
+          {/* ── Portrait ──────────────────────────────────────────── */}
+          <div className="relative mx-auto mb-8 h-32 w-32 overflow-hidden rounded-full shadow-md ring-2 ring-gold/40 ring-offset-[6px] ring-offset-ivory">
+            <Image
+              src="/founder.png"
+              alt="Ashima, founder of Dreamcraft"
+              fill
+              sizes="128px"
+              className="object-cover"
+              priority
+            />
           </div>
 
           {/* ── Eyebrow + title ───────────────────────────────────── */}

@@ -26,7 +26,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── What We Make ─────────────────────────────────────────────────────── */}
+      {/* ── Craftsmanship & Customization ────────────────────────────────────── */}
       <section className="bg-ivory py-16 md:py-20">
         <div className="mx-auto max-w-5xl px-5">
           <div className="grid gap-12 md:grid-cols-2 md:gap-16 items-center">
@@ -35,26 +35,32 @@ export default function AboutPage() {
                 Our Craft
               </p>
               <h2 className="mb-5 font-heading italic text-3xl text-navy md:text-4xl">
-                Eco-Resin Décor
+                Craftsmanship &amp; Customization
               </h2>
               <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
-                Every piece is handpoured using a premium eco-resin casting blend,
-                shaped with care, cured for 24 hours, and finished with a protective
-                water-resistant coating.
+                At Dreamcraft, every piece begins as an idea and is thoughtfully
+                brought to life through a meticulous handcrafted process.
+              </p>
+              <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
+                Our creations are made using a premium Eco-Resin casting blend,
+                carefully poured, shaped, and finished by hand. Each piece is
+                allowed to cure naturally for 24 hours to ensure strength,
+                durability, and a flawless finish.
               </p>
               <p className="font-body text-base leading-relaxed text-navy/65">
-                From serving trays and coaster sets to decorative bowls and photo
-                frames — each creation captures a unique pattern of colour and texture
-                that can never be perfectly replicated. That is the beauty of
-                handmade.
+                Once fully set, every creation is sealed with a specialized
+                protective coating that enhances its beauty while making it
+                water-resistant, moisture-resistant, and easy to maintain. This
+                finishing process also provides a long-lasting, elegant shine
+                that preserves the charm of each piece for years to come.
               </p>
             </div>
             <div className="flex flex-col gap-4">
               {[
-                { title: "Eco-Resin",      desc: "Premium, non-toxic casting blend — safe for home use." },
-                { title: "Hand-Poured",    desc: "No moulds off a machine. Every piece shaped by hand." },
-                { title: "Made to Order",  desc: "Crafted after you place your order — never mass-produced." },
-                { title: "Custom Options", desc: "Colors, finishes, names, and logos on request." },
+                { title: "Eco-Resin",         desc: "Premium casting blend, carefully poured and shaped by hand." },
+                { title: "Cured 24 Hours",    desc: "Natural curing ensures strength, durability, and a flawless finish." },
+                { title: "Protective Coating", desc: "Water-resistant, moisture-resistant, and easy to maintain." },
+                { title: "Long-Lasting Shine", desc: "A finish that preserves the charm of each piece for years to come." },
               ].map(({ title, desc }) => (
                 <div
                   key={title}
@@ -72,16 +78,16 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── Soy Candles ──────────────────────────────────────────────────────── */}
+      {/* ── Made-to-Order ─────────────────────────────────────────────────────── */}
       <section className="bg-blush/20 py-16 md:py-20">
         <div className="mx-auto max-w-5xl px-5">
           <div className="grid gap-12 md:grid-cols-2 md:gap-16 items-center">
             <div className="order-2 md:order-1 flex flex-col gap-4">
               {[
-                { title: "100% Soy Wax",      desc: "Natural, clean-burning, and longer-lasting than paraffin." },
-                { title: "Essential Oils",     desc: "Fragranced with pure essential oils — not synthetic." },
-                { title: "Lead-Free Cotton Wicks", desc: "Safer to burn, no soot or toxins." },
-                { title: "Hand-Poured",        desc: "Small-batch, slow-poured for an even burn." },
+                { title: "Custom-Made",     desc: "Every creation is crafted especially for you — never mass-produced." },
+                { title: "100% Soy Wax",    desc: "All candles are hand-poured using premium soy wax for a clean, long-lasting burn." },
+                { title: "Attention to Detail", desc: "Small-batch production keeps the focus on quality and individuality." },
+                { title: "Advance Ordering", desc: "As each piece is handmade, we kindly request advance ordering." },
               ].map(({ title, desc }) => (
                 <div
                   key={title}
@@ -97,43 +103,47 @@ export default function AboutPage() {
             </div>
             <div className="order-1 md:order-2">
               <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-gold">
-                Our Candles
+                How We Work
               </p>
               <h2 className="mb-5 font-heading italic text-3xl text-navy md:text-4xl">
-                Hand-Poured Soy Wax Candles
+                Made-to-Order
               </h2>
               <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
-                Our soy wax candles are handpoured in small batches using 100% natural
-                soy wax and fragranced with pure essential oils. They burn cleaner,
-                longer, and more evenly than typical paraffin candles.
+                Every Dreamcraft creation is custom-made and crafted especially for
+                you. We do not mass-produce our collections, allowing us to focus
+                on quality, individuality, and attention to detail.
+              </p>
+              <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
+                All our candles are hand-poured using premium soy wax, ensuring a
+                clean, long-lasting burn while bringing warmth, fragrance, and
+                elegance to your home.
               </p>
               <p className="font-body text-base leading-relaxed text-navy/65">
-                Whether it's lavender for calm, sandalwood for warmth, or a custom
-                scent for a special occasion — our candles fill your space with
-                something real.
+                As each piece is handmade, we kindly request advance ordering to
+                allow sufficient production time and ensure every creation
+                receives the care it deserves.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Customisation ─────────────────────────────────────────────────────── */}
+      {/* ── Personalization & Customization ──────────────────────────────────── */}
       <section className="bg-ivory py-16 md:py-20">
         <div className="mx-auto max-w-3xl px-5 text-center">
           <p className="mb-4 font-body text-[11px] uppercase tracking-[0.2em] text-terracotta">
             Made Just for You
           </p>
           <h2 className="mb-5 font-heading italic text-3xl text-navy md:text-4xl">
-            Fully Customisable
+            Personalization &amp; Customization
           </h2>
           <p className="mx-auto mb-8 max-w-xl font-body text-base leading-relaxed text-navy/65">
-            Every Dreamcraft piece can be personalised. Choose your colours, finish,
-            and add a name, date, or message. We also take corporate gifting orders
-            with brand logos, and custom designs for weddings and events.
+            Your story is unique, and your decor should be too. We offer a
+            variety of customization options, including:
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {["Custom Colours", "Names & Dates", "Marble or Solid Finish",
-              "Corporate Logos", "Wedding Favours", "Event Pieces"].map((tag) => (
+            {["Choice of Colors", "Solid or Marble-Effect Finish", "Multi-Color Blends",
+              "Personalized Names & Dates", "Brand Logos for Corporate Gifting", "Custom Wedding Designs"].map((tag) => (
               <span
                 key={tag}
                 className="rounded-full border border-terracotta/25 bg-blush/30 px-4 py-1.5
@@ -143,6 +153,26 @@ export default function AboutPage() {
               </span>
             ))}
           </div>
+          <p className="mx-auto mt-8 max-w-xl font-body text-base leading-relaxed text-navy/65">
+            Whether you are creating a meaningful gift, commemorating a
+            milestone, or designing a piece that perfectly complements your
+            space, we will work with you to bring your vision to life.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Thoughtfully Handmade ─────────────────────────────────────────────── */}
+      <section className="bg-blush/20 py-16 md:py-20">
+        <div className="mx-auto max-w-2xl px-5 text-center">
+          <p className="font-body text-base leading-relaxed text-navy/65 md:text-lg">
+            Small imperfections, subtle variations, and unique patterns are
+            natural characteristics of handcrafted products and are part of what
+            makes each Dreamcraft creation truly one of a kind.
+          </p>
+          <p className="mt-6 font-heading italic text-xl text-navy md:text-2xl">
+            Because beautiful things shouldn&apos;t just decorate a space —
+            they should tell a story.
+          </p>
         </div>
       </section>
 
