@@ -11,13 +11,27 @@ export const metadata: Metadata = {
 };
 
 export default async function GalleryPage() {
-  const { data } = await createClient()
-    .from("gallery_images")
-    .select("id, image_url, caption")
-    .eq("is_active", true)
-    .order("sort_order");
+  const supabase = createClient();
+  const [{ data }, { data: products }] = await Promise.all([
+    supabase
+      .from("gallery_images")
+      .select("id, image_url, caption")
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase.from("products").select("sku, product_images(url)"),
+  ]);
 
-  const images = (data ?? []) as GalleryImage[];
+  // Gallery photos are sourced 1:1 from product photos, so match back to the
+  // product by exact image URL to make each gallery tile shoppable.
+  const skuByUrl = new Map<string, string>();
+  for (const p of products ?? []) {
+    for (const img of p.product_images ?? []) skuByUrl.set(img.url, p.sku);
+  }
+
+  const images: GalleryImage[] = (data ?? []).map((g) => ({
+    ...g,
+    productSku: skuByUrl.get(g.image_url) ?? null,
+  }));
 
   return (
     <>

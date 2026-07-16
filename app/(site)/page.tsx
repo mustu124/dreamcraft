@@ -40,6 +40,7 @@ export default async function HomePage() {
     { data: rawTestimonials },
     { data: rawGallery },
     { data: rawCatImages },
+    { data: rawSkuImages },
   ] = await Promise.all([
     supabase
       .from("banners")
@@ -80,7 +81,8 @@ export default async function HomePage() {
       .from("gallery_images")
       .select("id, image_url, caption")
       .eq("is_active", true)
-      .order("sort_order"),
+      .order("sort_order")
+      .limit(12),
 
     // One product image per category — used to fill category cards
     supabase
@@ -89,6 +91,10 @@ export default async function HomePage() {
       .eq("is_active", true)
       .order("sort_order")
       .limit(60),
+
+    // sku ↔ image_url map — gallery photos are sourced 1:1 from product photos,
+    // so this makes each gallery tile link through to its product.
+    supabase.from("products").select("sku, product_images(url)"),
   ]);
 
   // Shape the raw response into what BestsellersSection expects.
@@ -112,7 +118,15 @@ export default async function HomePage() {
 
   const clips: ProcessClip[]       = (rawClips        ?? []) as ProcessClip[];
   const testimonials: Testimonial[] = (rawTestimonials ?? []) as Testimonial[];
-  const gallery: GalleryImage[]     = (rawGallery      ?? []) as GalleryImage[];
+
+  const skuByUrl = new Map<string, string>();
+  for (const p of (rawSkuImages ?? []) as { sku: string; product_images: { url: string }[] }[]) {
+    for (const img of p.product_images ?? []) skuByUrl.set(img.url, p.sku);
+  }
+  const gallery: GalleryImage[] = ((rawGallery ?? []) as GalleryImage[]).map((g) => ({
+    ...g,
+    productSku: skuByUrl.get(g.image_url) ?? null,
+  }));
 
   // Build { categoryId → firstProductImageUrl } for the category cards
   const categoryImages: Record<string, string> = {};

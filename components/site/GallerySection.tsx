@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import Reveal from "@/components/Reveal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -11,6 +12,7 @@ export type GalleryImage = {
   image_url: string;
   caption: string | null;
   alt_text?: string | null;
+  productSku?: string | null;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -119,13 +121,8 @@ function ImageCard({
 }) {
   const alt = img.caption ?? `Gallery image ${index + 1}`;
 
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Open: ${alt}`}
-      className="group relative block w-full aspect-[4/5] overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-terracotta focus-visible:ring-offset-2 shadow-sm hover:shadow-md transition-shadow duration-300"
-    >
+  const content = (
+    <>
       <Image
         src={img.image_url}
         alt={alt}
@@ -153,12 +150,33 @@ function ImageCard({
         </div>
       )}
 
-      {/* Zoom icon on hover */}
-      <div className="pointer-events-none absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-ivory/0 transition-all duration-300 group-hover:bg-ivory/80 group-hover:scale-100 scale-75 opacity-0 group-hover:opacity-100">
+      {/* Zoom icon — opens the lightbox without navigating away */}
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
+        aria-label={`View ${alt} full size`}
+        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-ivory/0 transition-all duration-300 group-hover:bg-ivory/80 group-hover:scale-100 scale-75 opacity-0 group-hover:opacity-100"
+      >
         <svg className="h-3.5 w-3.5 text-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
         </svg>
-      </div>
+      </button>
+    </>
+  );
+
+  const className = "group relative block w-full aspect-[4/5] overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-terracotta focus-visible:ring-offset-2 shadow-sm hover:shadow-md transition-shadow duration-300";
+
+  if (img.productSku) {
+    return (
+      <Link href={`/shop/${img.productSku}`} aria-label={`Shop: ${alt}`} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onOpen} aria-label={`Open: ${alt}`} className={className}>
+      {content}
     </button>
   );
 }
