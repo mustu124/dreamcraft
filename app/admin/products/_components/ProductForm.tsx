@@ -367,7 +367,7 @@ export function ProductForm({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Ocean Shell Resin Tray"
+              placeholder="e.g. Ocean Shell Eco-Resin Tray"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
             />
           </div>

@@ -208,7 +208,7 @@ function ClipForm({
       <div className="space-y-1">
         <label className="text-xs font-medium text-gray-600">Title *</label>
         <input value={draft.title} onChange={(e) => onChange({ ...draft, title: e.target.value })}
-          placeholder="Pouring the ocean resin base"
+          placeholder="Pouring the ocean Eco-Resin base"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40" />
       </div>
 

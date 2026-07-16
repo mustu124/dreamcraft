@@ -37,6 +37,8 @@ next-env.d.ts
 
 # raw asset source images (seeded to Supabase storage separately)
 /assets/
+/For Website/
+Dreamcraft_Homedecor_360.pdf
 
 # dev logs
 *.log

@@ -116,7 +116,7 @@ export default function ContactPage() {
               },
               {
                 q: "Do you accept bulk / corporate gifting orders?",
-                a: "Yes! We cater to corporate gifting with branded packaging and custom resin pieces. Contact us with your quantity and deadline for a quote.",
+                a: "Yes! We cater to corporate gifting with branded packaging and custom Eco-Resin pieces. Contact us with your quantity and deadline for a quote.",
               },
               {
                 q: "What is your return or exchange policy?",

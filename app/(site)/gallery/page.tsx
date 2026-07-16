@@ -30,10 +30,6 @@ export default async function GalleryPage() {
           <h1 className="font-heading italic text-4xl text-navy md:text-5xl">
             Gallery
           </h1>
-          <p className="mt-5 font-body text-base leading-relaxed text-navy/65 md:text-lg">
-            Every photo is a real piece, made by hand in our studio.
-            Click any image to view it in full.
-          </p>
         </div>
       </section>
 

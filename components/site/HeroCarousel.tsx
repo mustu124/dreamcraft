@@ -74,7 +74,7 @@ export default function HeroCarousel({ banners }: { banners: Banner[] }) {
               {/* CTA + text overlay */}
               <div className="absolute inset-0 flex flex-col items-center justify-end pb-16 px-4 text-center">
                 <p className="mb-2 font-body text-[11px] uppercase tracking-[0.25em] text-ivory/80 animate-hero-in" style={{ animationDelay: "0.1s" }}>
-                  Handmade · Made to Order · India
+                  Unique · Custom Made · Thoughtful Gifting
                 </p>
                 <h2 className="font-heading italic text-4xl text-ivory drop-shadow-lg md:text-6xl animate-hero-in" style={{ animationDelay: "0.25s" }}>
                   Your Dreams, Our Craft
@@ -227,7 +227,7 @@ function StaticHero() {
           className="mb-4 font-body text-[11px] uppercase tracking-[0.28em] text-cyan/80 animate-hero-in"
           style={{ animationDelay: "0.1s" }}
         >
-          Handmade · Made to Order · India
+          Unique · Custom Made · Thoughtful Gifting
         </p>
 
         <h1
@@ -241,7 +241,7 @@ function StaticHero() {
           className="mx-auto mt-5 max-w-lg font-body text-base leading-relaxed text-ivory/70 md:text-lg animate-hero-in"
           style={{ animationDelay: "0.5s" }}
         >
-          Eco-resin home décor &amp; hand-poured soy wax candles —
+          Eco-Resin home décor &amp; hand-poured soy wax candles —
           each piece made by hand, made with love.
         </p>
 

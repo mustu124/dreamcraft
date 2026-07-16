@@ -237,7 +237,7 @@ function TestimonialForm({
       <div className="space-y-1">
         <label className="text-xs font-medium text-gray-600">Review *</label>
         <textarea value={draft.review_text} onChange={(e) => onChange({ ...draft, review_text: e.target.value })}
-          rows={3} placeholder="Absolutely love my resin tray…"
+          rows={3} placeholder="Absolutely love my Eco-Resin tray…"
           className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40" />
       </div>
 
