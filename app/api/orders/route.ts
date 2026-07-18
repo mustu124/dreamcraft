@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { calcShipping } from "@/lib/config/shipping";
+import { calcShipping, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 
 // ── Request body shape ────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { items, address } = body as { items: unknown; address: unknown };
+    const { items, address, giftWrap } = body as { items: unknown; address: unknown; giftWrap?: unknown };
 
     if (!isValidItems(items)) {
       return NextResponse.json({ error: "Items are invalid or empty" }, { status: 400 });
@@ -117,19 +117,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const shipping = calcShipping(subtotal);
-    // total includes shipping — stored in total column; shipping itself has no column
-    const total = subtotal + shipping;
+    const shipping    = calcShipping(subtotal);
+    const wantsGiftWrap = giftWrap === true;
+    const giftWrapFee   = wantsGiftWrap ? GIFT_WRAP_FEE_INR : 0;
+    const total = subtotal + shipping + giftWrapFee;
 
     // ── 4. Generate order_number (max existing + 1, starting at 1001) ──────
+    // order_number is a text column, so sort by created_at (a real timestamp)
+    // rather than order_number itself, which would sort lexicographically
+    // (e.g. "999" after "1000") — and parse as a number before incrementing,
+    // since `"1001" + 1` in JS would concatenate to "10011" instead of adding.
     const { data: lastOrder } = await supabase
       .from("orders")
       .select("order_number")
-      .order("order_number", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const orderNumber = (lastOrder?.order_number ?? 1000) + 1;
+    const orderNumber = String((Number(lastOrder?.order_number) || 1000) + 1);
 
     // ── 5. Insert order ───────────────────────────────────────
     const { data: order, error: orderErr } = await supabase
@@ -145,10 +150,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         state:         address.state.trim(),
         pincode:       address.pincode,
         subtotal,
+        shipping_fee:  shipping,
+        gift_wrap:     wantsGiftWrap,
+        gift_wrap_fee: giftWrapFee,
         total,
         status:        "PENDING",
       })
-      .select("id")
+      .select("id, order_number")
       .single();
 
     if (orderErr || !order) {
@@ -165,7 +173,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.error("order_items insert error:", itemsErr);
     }
 
-    return NextResponse.json({ orderId: order.id, total }, { status: 201 });
+    return NextResponse.json(
+      { orderId: order.id, orderNumber: order.order_number, subtotal, shipping, giftWrapFee, total },
+      { status: 201 },
+    );
 
   } catch (err) {
     console.error("POST /api/orders unhandled error:", err);

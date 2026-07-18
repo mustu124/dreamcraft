@@ -9,7 +9,7 @@ type OrderRow = {
   customer_name: string; phone: string; email: string;
   city: string; state: string; pincode: string;
   address_line1: string; address_line2: string | null;
-  subtotal: number; total: number;
+  subtotal: number; shipping_fee: number; gift_wrap: boolean; gift_wrap_fee: number; total: number;
   razorpay_order_id: string | null; razorpay_payment_id: string | null;
 };
 
@@ -21,20 +21,19 @@ function buildCsv(orders: OrderRow[]): string {
   const HEADERS = [
     "Ref", "Date", "Time", "Name", "Phone", "Email",
     "City", "State", "Pincode",
-    "Subtotal (₹)", "Shipping (₹)", "Total (₹)",
+    "Subtotal (₹)", "Shipping (₹)", "Gift Wrap (₹)", "Total (₹)",
     "Status", "Razorpay Order ID", "Razorpay Payment ID",
   ];
 
   const rows = orders.map((o) => {
-    const d        = new Date(o.created_at);
-    const shipping = o.total - o.subtotal;
+    const d = new Date(o.created_at);
     return [
       o.id.slice(0, 8).toUpperCase(),
       d.toLocaleDateString("en-GB"),
       d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       o.customer_name, o.phone, o.email,
       o.city, o.state, o.pincode,
-      o.subtotal, shipping, o.total,
+      o.subtotal, o.shipping_fee ?? 0, o.gift_wrap ? (o.gift_wrap_fee ?? 0) : 0, o.total,
       o.status,
       o.razorpay_order_id  ?? "",
       o.razorpay_payment_id ?? "",

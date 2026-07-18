@@ -20,6 +20,7 @@ type OrderRow = {
   state:               string;
   created_at:          string;
   razorpay_payment_id: string | null;
+  payment_screenshot_url: string | null;
 };
 
 type InvoiceRow = {
@@ -41,7 +42,7 @@ export default async function OrderConfirmationPage({
   const [orderResult, invoiceResult] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, status, total, customer_name, email, city, state, created_at, razorpay_payment_id")
+      .select("id, status, total, customer_name, email, city, state, created_at, razorpay_payment_id, payment_screenshot_url")
       .eq("id", params.orderId)
       .single<OrderRow>(),
     supabase
@@ -53,8 +54,10 @@ export default async function OrderConfirmationPage({
 
   const order = orderResult.data;
 
-  // Guard: only show this page for PAID orders
-  if (!order || order.status !== "PAID") notFound();
+  // Guard: show this page once the order has been placed (PAID, or
+  // AWAITING_VERIFICATION while we manually confirm the payment screenshot)
+  const visibleStatuses = ["PAID", "AWAITING_VERIFICATION"];
+  if (!order || !visibleStatuses.includes(order.status)) notFound();
 
   const invoice  = invoiceResult.data;
   const shortId  = order.id.slice(-8).toUpperCase();
@@ -77,10 +80,12 @@ export default async function OrderConfirmationPage({
 
       {/* ── Heading ───────────────────────────────────────── */}
       <h1 className="mt-5 font-heading italic text-3xl text-navy md:text-4xl">
-        Order Confirmed!
+        {order.status === "PAID" ? "Order Confirmed!" : "Order Received!"}
       </h1>
-      <p className="mt-1 font-body text-sm text-navy/50">
-        Thank you, {order.customer_name.split(" ")[0]}. Your pieces are being made.
+      <p className="mt-1 max-w-sm text-center font-body text-sm text-navy/50">
+        {order.status === "PAID"
+          ? `Thank you, ${order.customer_name.split(" ")[0]}. Your pieces are being made.`
+          : `Thank you, ${order.customer_name.split(" ")[0]}. We've received your payment screenshot and will confirm your order on WhatsApp shortly.`}
       </p>
 
       {/* ── Order card ────────────────────────────────────── */}
@@ -100,10 +105,15 @@ export default async function OrderConfirmationPage({
         <div className="flex items-center justify-between">
           <div>
             <p className="font-heading italic text-2xl text-navy">{rupee(order.total)}</p>
-            <p className="mt-0.5 font-body text-[11px] text-navy/40">Paid via Razorpay</p>
+            <p className="mt-0.5 font-body text-[11px] text-navy/40">
+              {order.status === "PAID" ? "Paid" : "Awaiting payment confirmation"}
+            </p>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-terracotta/8 text-terracotta">
-            <PaidIcon />
+          <div className={[
+            "flex h-9 w-9 items-center justify-center rounded-full",
+            order.status === "PAID" ? "bg-terracotta/8 text-terracotta" : "bg-yellow-50 text-yellow-600",
+          ].join(" ")}>
+            {order.status === "PAID" ? <PaidIcon /> : <ClockIcon />}
           </div>
         </div>
 
@@ -116,8 +126,8 @@ export default async function OrderConfirmationPage({
           <p className="font-body text-xs text-navy/55">{order.city}, {order.state}</p>
         </div>
 
-        {/* Invoice row — shows number if ready, spinner hint if still generating */}
-        {invoice?.invoice_number && (
+        {/* Invoice — only once the order is confirmed PAID */}
+        {order.status === "PAID" && invoice?.invoice_number && (
           <>
             <div className="my-4 h-px w-full bg-navy/8" />
             <div className="flex items-center justify-between">
@@ -130,8 +140,7 @@ export default async function OrderConfirmationPage({
           </>
         )}
 
-        {/* If no invoice row at all yet, still show a download link — lazy gen handles it */}
-        {!invoice && (
+        {order.status === "PAID" && !invoice && (
           <>
             <div className="my-4 h-px w-full bg-navy/8" />
             <div className="flex items-center justify-between">
@@ -208,6 +217,16 @@ function CheckCircleIcon() {
       strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8" aria-hidden>
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
       <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
     </svg>
   );
 }

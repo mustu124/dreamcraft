@@ -23,9 +23,10 @@ function orderRef(id: string) {
 // ── Status badge ───────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-yellow-50 text-yellow-700 border border-yellow-200",
-  PAID:    "bg-green-50  text-green-700  border border-green-200",
-  FAILED:  "bg-red-50    text-red-600    border border-red-200",
+  PENDING:               "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  AWAITING_VERIFICATION: "bg-blue-50   text-blue-700   border border-blue-200",
+  PAID:                  "bg-green-50  text-green-700  border border-green-200",
+  FAILED:                "bg-red-50    text-red-600    border border-red-200",
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -125,6 +126,7 @@ export function OrdersTable({ initialOrders }: { initialOrders: OrderListRow[] }
         >
           <option value="">All statuses</option>
           <option value="PENDING">Pending</option>
+          <option value="AWAITING_VERIFICATION">Awaiting Verification</option>
           <option value="PAID">Paid</option>
           <option value="FAILED">Failed</option>
         </select>

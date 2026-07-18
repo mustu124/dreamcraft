@@ -203,7 +203,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
           label="Customization available"
           sublabel={<Link href="/contact" className="text-terracotta hover:underline">Contact us</Link>}
         />
-        <TrustItem icon={<LockIcon />} label="Secure payments via Razorpay" />
+        <TrustItem icon={<LockIcon />} label="Secure payments via UPI QR code" />
       </div>
     </div>
   );

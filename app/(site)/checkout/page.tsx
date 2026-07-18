@@ -4,62 +4,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
-import { calcShipping, rupee, FREE_SHIPPING_ABOVE_INR } from "@/lib/config/shipping";
+import { calcShipping, rupee, FREE_SHIPPING_ABOVE_INR, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
 
-// ── Razorpay SDK types (loaded via script tag — not an npm package) ───────────
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
-
-type RazorpaySuccessResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id:   string;
-  razorpay_signature:  string;
-};
-
-type RazorpayOptions = {
-  key:          string;
-  amount:       number;
-  currency:     string;
-  name:         string;
-  description?: string;
-  image?:       string;
-  order_id:     string;
-  prefill?:     { name?: string; email?: string; contact?: string };
-  theme?:       { color?: string };
-  handler:      (response: RazorpaySuccessResponse) => void;
-  modal?:       { ondismiss?: () => void; escape?: boolean; backdropclose?: boolean };
-};
-
-type RazorpayInstance = { open: () => void };
-
-// ── Script loader (idempotent — safe to call multiple times) ──────────────────
-
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
-    );
-    if (existing) {
-      existing.addEventListener("load",  () => resolve(true),  { once: true });
-      existing.addEventListener("error", () => resolve(false), { once: true });
-      return;
-    }
-    const s = document.createElement("script");
-    s.src    = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload  = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
-}
+// Razorpay is intentionally not wired up right now — the client-side modal
+// logic still lives at lib/payments/razorpay-client.ts and the server routes
+// at /api/razorpay/create-order + /api/razorpay/verify are untouched, so it
+// can be re-enabled later without rebuilding it.
 
 // ── Form shape ────────────────────────────────────────────────────────────────
 
@@ -87,10 +38,8 @@ const EMPTY_FORM: FormData = {
 type PageStatus =
   | "idle"              // form ready to submit
   | "submitting"        // POST /api/orders in flight
-  | "opening_razorpay" // POST /api/razorpay/create-order + loading SDK + opening modal
-  | "verifying"         // POST /api/razorpay/verify in flight
-  | "verify_failed"     // signature mismatch or network error after payment
-  | "error";            // order creation or Razorpay setup failed
+  | "awaiting_payment"  // order created — showing QR + screenshot upload
+  | "error";            // order creation failed
 
 // ── Indian states / UTs ───────────────────────────────────────────────────────
 
@@ -128,20 +77,27 @@ export default function CheckoutPage() {
 
   const subtotal = totalPrice;
   const shipping = calcShipping(subtotal);
-  const total    = subtotal + shipping;
 
   // ── Form state ─────────────────────────────────────────────
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [errors,   setErrors]   = useState<FormErrors>({});
+  const [giftWrap, setGiftWrap] = useState(false);
+
+  const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
+  const total       = subtotal + shipping + giftWrapFee;
 
   // ── Page status ────────────────────────────────────────────
-  const [status,       setStatus]       = useState<PageStatus>("idle");
-  const [orderId,      setOrderId]      = useState<string | null>(null);
-  const [submitError,  setSubmitError]  = useState<string | null>(null);
-  const [verifyError,  setVerifyError]  = useState<string | null>(null);
+  const [status,      setStatus]      = useState<PageStatus>("idle");
+  const [orderId,      setOrderId]     = useState<string | null>(null);
+  const [orderNumber,  setOrderNumber] = useState<string | number | null>(null);
+  const [submitError, setSubmitError]  = useState<string | null>(null);
+  // Server-confirmed totals — authoritative over the client-side calc above,
+  // in case a price changed between add-to-cart and checkout.
+  const [confirmedTotals, setConfirmedTotals] = useState<{ subtotal: number; shipping: number; giftWrapFee: number; total: number } | null>(null);
 
-  // Stable ref so Razorpay callbacks close over the latest orderId
-  const orderIdRef = useRef<string | null>(null);
+  // Snapshot of items/address/gift-wrap at the moment the order was placed —
+  // used to build the WhatsApp message even after the cart is cleared.
+  const orderSnapshotRef = useRef<{ items: CartItem[]; address: FormData; giftWrap: boolean } | null>(null);
 
   // ── Redirect if cart is empty after hydration ──────────────
   const [mounted, setMounted] = useState(false);
@@ -159,95 +115,7 @@ export default function CheckoutPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  // ── Payment verification (called by Razorpay handler) ─────
-  async function verifyPayment(response: RazorpaySuccessResponse) {
-    setStatus("verifying");
-
-    try {
-      const res = await fetch("/api/razorpay/verify", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          razorpay_order_id:   response.razorpay_order_id,
-          razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_signature:  response.razorpay_signature,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setStatus("verify_failed");
-        setVerifyError(data.error ?? "Payment could not be verified.");
-        return;
-      }
-
-      // Payment verified — clear cart, go to confirmation
-      clearCart();
-      router.push(`/order-confirmation/${orderIdRef.current}`);
-
-    } catch {
-      setStatus("verify_failed");
-      setVerifyError("Network error during verification. Your payment may have been captured — please contact us with your order number.");
-    }
-  }
-
-  // ── Razorpay modal opener ──────────────────────────────────
-  async function initiateRazorpay(
-    ourOrderId: string,
-    prefill: { name: string; email: string; phone: string },
-  ) {
-    setStatus("opening_razorpay");
-
-    try {
-      // 1. Create Razorpay order server-side
-      const createRes = await fetch("/api/razorpay/create-order", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: ourOrderId }),
-      });
-
-      const rzpData = await createRes.json();
-      if (!createRes.ok) {
-        throw new Error(rzpData.error ?? "Could not create payment order");
-      }
-
-      // 2. Load Razorpay checkout.js
-      const loaded = await loadRazorpayScript();
-      if (!loaded) throw new Error("Could not load payment gateway. Please check your connection and try again.");
-
-      // 3. Open the modal — Razorpay manages payment retries internally
-      const rzp = new window.Razorpay({
-        key:         rzpData.keyId,
-        amount:      rzpData.amount,
-        currency:    rzpData.currency,
-        name:        "Dreamcraft",
-        description: "Handcrafted home décor",
-        order_id:    rzpData.razorpayOrderId,
-        prefill: {
-          name:    prefill.name,
-          email:   prefill.email,
-          contact: prefill.phone,
-        },
-        theme: { color: "#E0825F" }, // terracotta
-        handler: verifyPayment,
-        modal: {
-          // User closed the modal — cart stays intact so they can retry
-          ondismiss:     () => setStatus("idle"),
-          escape:        false,
-          backdropclose: false,
-        },
-      });
-
-      rzp.open();
-
-    } catch (err) {
-      setStatus("error");
-      setSubmitError(err instanceof Error ? err.message : "Could not open payment gateway.");
-    }
-  }
-
-  // ── Form submit ────────────────────────────────────────────
+  // ── Form submit — creates the order, then moves to the payment step ───────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -263,7 +131,6 @@ export default function CheckoutPage() {
     setSubmitError(null);
 
     try {
-      // Step 1 — create our internal order (server-side price recomputation)
       const ordersRes = await fetch("/api/orders", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -286,22 +153,23 @@ export default function CheckoutPage() {
             state:        formData.state,
             pincode:      formData.pincode,
           },
+          giftWrap,
         }),
       });
 
       const orderData = await ordersRes.json();
       if (!ordersRes.ok) throw new Error(orderData.error ?? "Could not place order.");
 
-      // Store for use in callbacks and error messages
-      orderIdRef.current = orderData.orderId;
+      orderSnapshotRef.current = { items, address: formData, giftWrap };
       setOrderId(orderData.orderId);
-
-      // Step 2 — hand off to Razorpay immediately
-      await initiateRazorpay(orderData.orderId, {
-        name:  formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
+      setOrderNumber(orderData.orderNumber ?? null);
+      setConfirmedTotals({
+        subtotal: orderData.subtotal ?? subtotal,
+        shipping: orderData.shipping ?? shipping,
+        giftWrapFee: orderData.giftWrapFee ?? giftWrapFee,
+        total: orderData.total,
       });
+      setStatus("awaiting_payment");
 
     } catch (err) {
       setStatus("error");
@@ -309,18 +177,27 @@ export default function CheckoutPage() {
     }
   }
 
-  // ── verify_failed — separate full-page state ───────────────
-  if (status === "verify_failed") {
+  // ── Payment step — QR code + screenshot upload ─────────────
+  if (status === "awaiting_payment" && orderId && confirmedTotals) {
     return (
-      <VerifyFailed
+      <PaymentStep
         orderId={orderId}
-        error={verifyError ?? "Payment could not be verified."}
+        orderNumber={orderNumber}
+        subtotal={confirmedTotals.subtotal}
+        shipping={confirmedTotals.shipping}
+        giftWrapFee={confirmedTotals.giftWrapFee}
+        total={confirmedTotals.total}
+        snapshot={orderSnapshotRef.current}
+        onConfirmed={() => {
+          clearCart();
+          router.push(`/order-confirmation/${orderId}`);
+        }}
       />
     );
   }
 
   // ── Form layout ────────────────────────────────────────────
-  const isWorking = (["submitting", "opening_razorpay", "verifying"] as PageStatus[]).includes(status);
+  const isWorking = status === "submitting";
 
   const inputCls = (field: keyof FormData) =>
     [
@@ -447,9 +324,25 @@ export default function CheckoutPage() {
               </Field>
             </FormSection>
 
+            {/* Gift wrapping ───────────────────────────────── */}
+            <FormSection title="Extras">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-navy/12 bg-white px-4 py-3.5 transition-colors hover:border-terracotta/40">
+                <input
+                  type="checkbox"
+                  checked={giftWrap}
+                  onChange={(e) => setGiftWrap(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 accent-terracotta"
+                />
+                <span className="font-body text-sm text-navy/75">
+                  Add individual gift box packing
+                  <span className="ml-1.5 text-navy/45">(+{rupee(GIFT_WRAP_FEE_INR)})</span>
+                </span>
+              </label>
+            </FormSection>
+
           </fieldset>{/* end disabled fieldset */}
 
-          {/* Error banner (order creation / Razorpay setup failure) */}
+          {/* Error banner (order creation failure) */}
           {status === "error" && submitError && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-body text-sm text-red-700">
               {submitError}
@@ -465,9 +358,7 @@ export default function CheckoutPage() {
             {isWorking ? (
               <span className="flex items-center justify-center gap-2">
                 <SpinnerIcon />
-                {status === "submitting"        && "Placing Order…"}
-                {status === "opening_razorpay"  && "Opening Payment…"}
-                {status === "verifying"         && "Verifying Payment…"}
+                Placing Order…
               </span>
             ) : (
               `Place Order · ${rupee(total)}`
@@ -485,53 +376,195 @@ export default function CheckoutPage() {
           aria-label="Order summary"
           className="mt-10 lg:mt-0 lg:sticky lg:top-[80px] lg:self-start"
         >
-          <CheckoutSummary items={items} subtotal={subtotal} shipping={shipping} total={total} />
+          <CheckoutSummary items={items} subtotal={subtotal} shipping={shipping} giftWrapFee={giftWrapFee} total={total} />
         </aside>
       </div>
     </div>
   );
 }
 
-// ── Verify failed state ───────────────────────────────────────────────────────
-// Shown when the HMAC check fails or the verify network call errors.
-// The order has been captured by Razorpay but we couldn't confirm it —
-// the customer should not retry payment; they should contact support.
+// ── Payment step — QR code + screenshot upload ────────────────────────────────
+// Shown once the order has been created (status PENDING). The customer scans
+// the QR, pays via any UPI app, then uploads a screenshot as proof. Uploading
+// stores the screenshot and flips the order to AWAITING_VERIFICATION — the
+// WhatsApp button afterwards is a notification convenience, not the thing
+// that records the order.
 
-function VerifyFailed({ orderId, error }: { orderId: string | null; error: string }) {
-  const shortId = orderId ? orderId.slice(-8).toUpperCase() : "—";
+type UploadState = "idle" | "uploading" | "done" | "error";
+
+function PaymentStep({
+  orderId,
+  orderNumber,
+  subtotal,
+  shipping,
+  giftWrapFee,
+  total,
+  snapshot,
+  onConfirmed,
+}: {
+  orderId: string;
+  orderNumber: string | number | null;
+  subtotal: number;
+  shipping: number;
+  giftWrapFee: number;
+  total: number;
+  snapshot: { items: CartItem[]; address: FormData; giftWrap: boolean } | null;
+  onConfirmed: () => void;
+}) {
+  const [uploadState,   setUploadState]   = useState<UploadState>("idle");
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [previewUrl,    setPreviewUrl]    = useState<string | null>(null);
+  const [uploadError,   setUploadError]   = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPreviewUrl(URL.createObjectURL(file));
+    setUploadState("uploading");
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed. Please try again.");
+
+      setScreenshotUrl(data.url);
+      setUploadState("done");
+    } catch (err) {
+      setUploadState("error");
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    }
+  }
+
+  function handleConfirm() {
+    if (!screenshotUrl || !snapshot) return;
+
+    const link = buildOrderWhatsAppLink({
+      orderNumber: orderNumber ?? orderId.slice(-8).toUpperCase(),
+      customerName: snapshot.address.fullName,
+      phone: snapshot.address.phone,
+      addressLine1: snapshot.address.addressLine1,
+      addressLine2: snapshot.address.addressLine2 || undefined,
+      city: snapshot.address.city,
+      state: snapshot.address.state,
+      pincode: snapshot.address.pincode,
+      items: snapshot.items.map((i) => ({
+        name: i.name,
+        variantLabel: i.variantLabel,
+        qty: i.qty,
+        price: i.price,
+      })),
+      subtotal,
+      shipping,
+      giftWrap: snapshot.giftWrap,
+      giftWrapFee,
+      total,
+      screenshotUrl,
+    });
+
+    // Direct user-gesture click — safe from popup blockers.
+    window.open(link, "_blank", "noopener,noreferrer");
+    onConfirmed();
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ivory px-4 py-20">
-      <div className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500">
-          <AlertIcon />
-        </div>
-        <h2 className="mt-5 font-heading italic text-2xl text-navy">Payment not verified</h2>
-        <p className="mt-2 font-body text-sm text-navy/60">
-          {error}
+    <div className="flex min-h-screen items-center justify-center bg-ivory px-4 py-16">
+      <div className="w-full max-w-md rounded-2xl border border-navy/8 bg-white p-8 shadow-sm">
+        <p className="font-body text-xs uppercase tracking-widest text-terracotta">
+          Order {orderNumber ? `#${orderNumber}` : ""} placed
+        </p>
+        <h1 className="mt-1 font-heading italic text-3xl text-navy">Complete Payment</h1>
+        <p className="mt-2 font-body text-sm text-navy/55">
+          Scan the QR code below and pay {rupee(total)} using any UPI app, then
+          upload a screenshot of the payment confirmation.
         </p>
 
-        <div className="mt-5 rounded-xl bg-blush/20 px-5 py-4 text-left">
-          <p className="font-body text-xs text-navy/55">
-            Your order reference:{" "}
-            <span className="font-semibold text-navy">#{shortId}</span>
+        {/* QR code */}
+        <div className="mx-auto mt-6 flex h-56 w-56 items-center justify-center overflow-hidden rounded-xl border border-navy/10 bg-blush/15">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/payment-qr.png"
+            alt="Scan to pay via UPI"
+            className="h-full w-full object-contain"
+          />
+        </div>
+        <p className="mt-3 text-center font-body text-lg font-semibold text-terracotta">
+          {rupee(total)}
+        </p>
+        {giftWrapFee > 0 && (
+          <p className="text-center font-body text-xs text-navy/40">
+            Includes {rupee(giftWrapFee)} gift box packing
           </p>
-          <p className="mt-2 font-body text-xs text-navy/55">
-            Please do not attempt to pay again. Contact us with this reference:
-          </p>
-          <div className="mt-3 space-y-1">
-            {/* Update these with real store contact details */}
-            <p className="font-body text-xs text-navy/70">📧 hello@dreamcraft.in</p>
-            <p className="font-body text-xs text-navy/70">📞 +91 98765 43210</p>
-          </div>
+        )}
+
+        {/* Screenshot upload */}
+        <div className="mt-6">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {uploadState === "idle" && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full rounded-full border-2 border-navy/20 py-3.5 font-body text-sm font-medium text-navy transition-all duration-200 hover:border-terracotta hover:text-terracotta"
+            >
+              Upload Payment Screenshot
+            </button>
+          )}
+
+          {uploadState === "uploading" && (
+            <div className="flex items-center justify-center gap-2 rounded-full border-2 border-navy/10 py-3.5 font-body text-sm text-navy/50">
+              <SpinnerIcon /> Uploading screenshot…
+            </div>
+          )}
+
+          {(uploadState === "done" || uploadState === "error") && previewUrl && (
+            <div className="flex items-center gap-3 rounded-xl border border-navy/10 bg-blush/10 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewUrl} alt="Payment screenshot preview" className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />
+              <div className="min-w-0 flex-1">
+                {uploadState === "done" ? (
+                  <p className="font-body text-xs font-medium text-green-700">✓ Screenshot uploaded</p>
+                ) : (
+                  <p className="font-body text-xs text-red-600">{uploadError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-0.5 font-body text-xs text-terracotta underline underline-offset-2"
+                >
+                  {uploadState === "done" ? "Replace" : "Try again"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <Link
-          href="/shop"
-          className="mt-6 block rounded-full border border-navy/20 py-3 font-body text-sm text-navy/70 transition-colors hover:border-terracotta hover:text-terracotta"
+        <button
+          type="button"
+          disabled={uploadState !== "done"}
+          onClick={handleConfirm}
+          className="mt-4 w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Continue Shopping
-        </Link>
+          Confirm Order via WhatsApp
+        </button>
+
+        <p className="mt-4 text-center font-body text-xs text-navy/40">
+          We&apos;ll confirm your order on WhatsApp once payment is verified.
+        </p>
       </div>
     </div>
   );
@@ -540,11 +573,12 @@ function VerifyFailed({ orderId, error }: { orderId: string | null; error: strin
 // ── Checkout order summary sidebar ────────────────────────────────────────────
 
 function CheckoutSummary({
-  items, subtotal, shipping, total,
+  items, subtotal, shipping, giftWrapFee, total,
 }: {
   items: CartItem[];
   subtotal: number;
   shipping: number;
+  giftWrapFee: number;
   total: number;
 }) {
   const amountToFree = FREE_SHIPPING_ABOVE_INR - subtotal;
@@ -596,6 +630,12 @@ function CheckoutSummary({
             {shipping === 0 ? "Free" : rupee(shipping)}
           </span>
         </div>
+        {giftWrapFee > 0 && (
+          <div className="flex justify-between">
+            <span className="text-navy/60">Gift box packing</span>
+            <span className="text-navy/75">{rupee(giftWrapFee)}</span>
+          </div>
+        )}
       </div>
 
       {/* Total */}
@@ -612,7 +652,7 @@ function CheckoutSummary({
 
       <div className="mt-5 flex items-center justify-center gap-1.5 font-body text-[10px] text-navy/35">
         <LockIcon />
-        Secured by Razorpay
+        Pay via UPI QR code
       </div>
     </div>
   );
@@ -674,17 +714,6 @@ function LockIcon() {
       strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
-      strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   );
 }

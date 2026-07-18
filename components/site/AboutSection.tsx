@@ -16,8 +16,8 @@ export default function AboutSection() {
            */}
           <div className="relative aspect-[4/3] overflow-hidden rounded-2xl shadow-md md:aspect-[4/5]">
             <Image
-              src="/lifestyle-candle.jpg"
-              alt="Handmade mushroom soy candle by Dreamcraft"
+              src="/morethandecor.jpeg"
+              alt="Handmade Dreamcraft trinket trays and framed print"
               fill
               sizes="(max-width: 767px) 100vw, 50vw"
               className="object-cover"

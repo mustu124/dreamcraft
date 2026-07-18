@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import MarkPaidButton from "./MarkPaidButton";
 
 export const metadata: Metadata = { title: "Order Detail | Dreamcraft Admin" };
 
@@ -25,9 +26,10 @@ function orderRef(id: string) {
 // ── Status badge ───────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-yellow-50 text-yellow-700 border border-yellow-200",
-  PAID:    "bg-green-50  text-green-700  border border-green-200",
-  FAILED:  "bg-red-50    text-red-600    border border-red-200",
+  PENDING:               "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  AWAITING_VERIFICATION: "bg-blue-50   text-blue-700   border border-blue-200",
+  PAID:                  "bg-green-50  text-green-700  border border-green-200",
+  FAILED:                "bg-red-50    text-red-600    border border-red-200",
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -104,7 +106,7 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
 
         {/* Invoice download — only for PAID orders */}
-        {order.status === "PAID" && (
+        {order.status === "PAID" ? (
           <a
             href={`/api/invoice/${order.id}`}
             target="_blank"
@@ -120,6 +122,8 @@ export default async function OrderDetailPage({ params }: Props) {
               <span className="ml-0.5 font-mono text-xs text-gray-400">{invoice.invoice_number}</span>
             )}
           </a>
+        ) : (
+          <MarkPaidButton orderId={order.id} />
         )}
       </div>
 
@@ -186,14 +190,36 @@ export default async function OrderDetailPage({ params }: Props) {
           </div>
           <div className="flex justify-between text-sm text-gray-600">
             <span>Shipping</span>
-            {(() => { const s = order.total - order.subtotal; return <span>{s === 0 ? "Free" : fmt(s)}</span>; })()}
+            <span>{!order.shipping_fee ? "Free" : fmt(order.shipping_fee)}</span>
           </div>
+          {order.gift_wrap && (
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Gift box packing</span>
+              <span>{fmt(order.gift_wrap_fee ?? 0)}</span>
+            </div>
+          )}
           <div className="flex justify-between pt-2 text-base font-bold text-gray-900 border-t border-gray-200">
             <span>Total</span>
             <span>{fmt(order.total)}</span>
           </div>
         </div>
       </div>
+
+      {/* ── Payment Screenshot ──────────────────────────────────── */}
+      {order.payment_screenshot_url && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment Screenshot</h2>
+          <a href={order.payment_screenshot_url} target="_blank" rel="noopener noreferrer" className="inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={order.payment_screenshot_url}
+              alt="Customer payment screenshot"
+              className="max-h-80 rounded-lg border border-gray-200 object-contain"
+            />
+          </a>
+          <p className="text-xs text-gray-400">Click to view full size. Verify the amount and reference before marking as paid.</p>
+        </div>
+      )}
 
       {/* ── Payment ─────────────────────────────────────────────── */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
