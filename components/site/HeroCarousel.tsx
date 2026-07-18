@@ -241,7 +241,7 @@ function StaticHero() {
           className="mx-auto mt-5 max-w-lg font-body text-base leading-relaxed text-ivory/70 md:text-lg animate-hero-in"
           style={{ animationDelay: "0.5s" }}
         >
-          Eco-Resin home décor &amp; hand-poured soy wax candles —
+          Eco-Resin home decor &amp; hand-poured soy wax candles —
           each piece made by hand, made with love.
         </p>
 

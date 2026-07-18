@@ -88,7 +88,7 @@ export async function initiateRazorpay(
       amount:      rzpData.amount,
       currency:    rzpData.currency,
       name:        "Dreamcraft",
-      description: "Handcrafted home décor",
+      description: "Handcrafted home decor",
       order_id:    rzpData.razorpayOrderId,
       prefill: {
         name:    prefill.name,

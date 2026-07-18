@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About Dreamcraft",
   description:
-    "Learn about Dreamcraft — handmade eco-resin home décor and hand-poured soy wax candles made with love in India.",
+    "Learn about Dreamcraft — handmade eco-resin home decor and hand-poured soy wax candles made with love in India.",
 };
 
 export default function AboutPage() {
@@ -20,7 +20,7 @@ export default function AboutPage() {
             Made with love,<br />made by hand
           </h1>
           <p className="mx-auto mt-6 max-w-xl font-body text-base leading-relaxed text-navy/65 md:text-lg">
-            Dreamcraft is a small handmade studio creating eco-resin home décor and
+            Dreamcraft is a small handmade studio creating eco-resin home decor and
             soy wax candles — each piece thoughtfully crafted to order in India.
           </p>
         </div>

@@ -7,7 +7,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Gallery",
   description:
-    "See Dreamcraft's handmade eco-resin décor and soy wax candles — real pieces, real homes.",
+    "See Dreamcraft's handmade eco-resin decor and soy wax candles — real pieces, real homes.",
 };
 
 export default async function GalleryPage() {

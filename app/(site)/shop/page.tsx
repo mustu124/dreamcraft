@@ -10,7 +10,7 @@ import type { ShopProduct } from "./ShopProductCard";
 
 export const metadata: Metadata = {
   title: "Shop | Dreamcraft",
-  description: "Browse handcrafted eco-resin home décor and soy wax candles — made to order.",
+  description: "Browse handcrafted eco-resin home decor and soy wax candles — made to order.",
 };
 
 // ── Raw Supabase shapes ───────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Our Story | Dreamcraft",
   description:
-    "Meet Ashima, the creator behind Dreamcraft — handcrafted eco-resin home décor and soy wax candles made with love.",
+    "Meet Ashima, the creator behind Dreamcraft — handcrafted eco-resin home decor and soy wax candles made with love.",
 };
 
 // Tailwind class string shared across all body paragraphs — defined once

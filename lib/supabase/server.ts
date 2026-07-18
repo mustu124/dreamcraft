@@ -23,6 +23,13 @@ export function createClient() {
           }
         },
       },
+      global: {
+        // Without this, requests made during Server Component rendering are
+        // subject to Next's fetch Data Cache and get cached indefinitely —
+        // an admin edit would never show up on the live site until the next
+        // deploy. Product/content data must always be read fresh.
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
     }
   );
 }

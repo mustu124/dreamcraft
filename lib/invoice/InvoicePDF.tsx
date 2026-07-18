@@ -272,7 +272,7 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
         <View style={S.header}>
           <View>
             <Text style={S.brandName}>Dreamcraft</Text>
-            <Text style={S.brandTagline}>Handcrafted home décor</Text>
+            <Text style={S.brandTagline}>Handcrafted home decor</Text>
             <Text style={S.brandContact}>hello@dreamcraft.in</Text>
           </View>
           <View style={S.invoiceMeta}>

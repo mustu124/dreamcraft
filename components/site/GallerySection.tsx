@@ -62,7 +62,7 @@ export default function GallerySection({ images, showAll = false }: { images: Ga
               </h2>
               <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-terracotta/40" />
               <p className="mx-auto mt-3 max-w-xl font-body text-sm text-navy/55 md:text-base">
-                Real spaces, real pieces — our handcrafted décor in the wild.
+                Real spaces, real pieces — our handcrafted decor in the wild.
               </p>
             </Reveal>
           )}
