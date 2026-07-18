@@ -96,9 +96,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const productId = product!.id;
 
-  await Promise.all([
+  const [variantsRes, imagesRes] = await Promise.all([
     admin.from("product_variants").insert(
-      (variants as { label: string; price: number }[]).map((v, i) => ({
+      (variants as { label: string; price: number }[]).map((v) => ({
         product_id: productId,
         label: v.label.trim(),
         price: Math.round(v.price),
@@ -112,8 +112,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             sort_order: img.sort_order,
           })),
         )
-      : Promise.resolve(),
+      : Promise.resolve({ error: null }),
   ]);
+
+  if (variantsRes.error || imagesRes.error) {
+    return NextResponse.json(
+      { error: (variantsRes.error ?? imagesRes.error)!.message },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({ id: productId }, { status: 201 });
 }

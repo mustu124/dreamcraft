@@ -21,11 +21,10 @@ export async function GET(
     .select(
       `*, categories!category_id(id, name),
        subcategories!subcategory_id(id, name),
-       product_variants(id, label, price, sort_order, is_active),
+       product_variants(id, label, price),
        product_images(id, url, sort_order)`,
     )
     .eq("id", params.id)
-    .order("sort_order", { referencedTable: "product_variants" })
     .order("sort_order", { referencedTable: "product_images" })
     .single();
 
@@ -99,31 +98,28 @@ export async function PATCH(
     .map((v: { id: string }) => v.id)
     .filter((id: string) => !incomingIds.includes(id));
 
-  // Try to delete removed variants; soft-delete (is_active=false) on FK violation
+  // product_variants has no sort_order/is_active columns — display order follows
+  // insertion order, and a variant referenced by past orders (FK violation) is
+  // simply left in place since there's no soft-delete flag to fall back to.
   for (const varId of toRemove) {
-    const { error } = await admin.from("product_variants").delete().eq("id", varId);
-    if (error?.code === "23503") {
-      await admin.from("product_variants").update({ is_active: false }).eq("id", varId);
-    }
+    await admin.from("product_variants").delete().eq("id", varId);
   }
 
   // Upsert incoming variants
-  for (let i = 0; i < incomingVariants.length; i++) {
-    const v = incomingVariants[i];
+  for (const v of incomingVariants) {
     if (v.id) {
-      await admin.from("product_variants").update({
+      const { error } = await admin.from("product_variants").update({
         label: v.label.trim(),
         price: Math.round(v.price),
-        sort_order: i,
       }).eq("id", v.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
-      await admin.from("product_variants").insert({
+      const { error } = await admin.from("product_variants").insert({
         product_id: params.id,
         label: v.label.trim(),
         price: Math.round(v.price),
-        sort_order: i,
-        is_active: true,
       });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }
 
@@ -148,13 +144,15 @@ export async function PATCH(
   for (let i = 0; i < incomingImages.length; i++) {
     const img = incomingImages[i];
     if (img.id) {
-      await admin.from("product_images").update({ sort_order: i }).eq("id", img.id);
+      const { error } = await admin.from("product_images").update({ sort_order: i }).eq("id", img.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
-      await admin.from("product_images").insert({
+      const { error } = await admin.from("product_images").insert({
         product_id: params.id,
         url: img.url,
         sort_order: i,
       });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }
 
