@@ -59,6 +59,15 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
     router.push("/checkout");
   }
 
+  // For a single-variant product, the variant label (e.g. "Per piece",
+  // "Set of 2") never appears anywhere else since the size selector only
+  // renders when there are multiple variants — so show it next to the price
+  // instead, unless it's just the generic "Standard" placeholder.
+  const priceQualifier =
+    product.variants.length === 1 && variant && variant.label.toLowerCase() !== "standard"
+      ? variant.label.toLowerCase()
+      : null;
+
   const priceFormatted = variant
     ? `₹${variant.price.toLocaleString("en-IN")}`
     : null;
@@ -115,6 +124,9 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       {priceFormatted && (
         <p className="font-body text-2xl font-semibold text-navy">
           {priceFormatted}
+          {priceQualifier && (
+            <span className="ml-1.5 text-base font-normal text-navy/50">{priceQualifier}</span>
+          )}
         </p>
       )}
 
