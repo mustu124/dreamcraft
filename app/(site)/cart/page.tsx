@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { CartItem } from "@/contexts/CartContext";
 import { useCart } from "@/contexts/CartContext";
-import { calcShipping, rupee, FREE_SHIPPING_ABOVE_INR } from "@/lib/config/shipping";
+import { calcShipping, rupee } from "@/lib/config/shipping";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -165,8 +165,6 @@ function OrderSummary({
   shipping: number;
   total: number;
 }) {
-  const amountToFreeShipping = FREE_SHIPPING_ABOVE_INR - subtotal;
-
   return (
     <div className="rounded-2xl border border-navy/8 bg-white p-6 shadow-sm">
       <h2 className="mb-5 font-heading italic text-xl text-navy">Order Summary</h2>
@@ -201,12 +199,6 @@ function OrderSummary({
       </div>
 
       {/* Shipping nudge */}
-      {shipping > 0 && amountToFreeShipping > 0 && (
-        <p className="mt-3 text-center font-body text-[11px] text-navy/45">
-          Add {rupee(amountToFreeShipping)} more for free shipping
-        </p>
-      )}
-
       {/* CTA */}
       <Link
         href="/checkout"

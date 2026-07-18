@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
-import { calcShipping, rupee, FREE_SHIPPING_ABOVE_INR, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
 
 // Razorpay is intentionally not wired up right now — the client-side modal
@@ -581,8 +581,6 @@ function CheckoutSummary({
   giftWrapFee: number;
   total: number;
 }) {
-  const amountToFree = FREE_SHIPPING_ABOVE_INR - subtotal;
-
   return (
     <div className="rounded-2xl border border-navy/8 bg-white p-6 shadow-sm">
       <h2 className="mb-5 font-heading italic text-xl text-navy">Your Order</h2>
@@ -643,12 +641,6 @@ function CheckoutSummary({
         <span className="font-body text-base font-semibold text-navy">Total</span>
         <span className="font-body text-lg font-bold text-terracotta">{rupee(total)}</span>
       </div>
-
-      {shipping > 0 && amountToFree > 0 && (
-        <p className="mt-3 text-center font-body text-[11px] text-navy/40">
-          Add {rupee(amountToFree)} more for free shipping
-        </p>
-      )}
 
       <div className="mt-5 flex items-center justify-center gap-1.5 font-body text-[10px] text-navy/35">
         <LockIcon />
