@@ -34,9 +34,9 @@ const STATUS_STYLES: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium
       ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-500"}`}>
-      {status}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }

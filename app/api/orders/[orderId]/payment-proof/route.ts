@@ -6,11 +6,13 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 // POST /api/orders/[orderId]/payment-proof
 // Body: multipart/form-data — field: file (File)
 // Public route (checkout has no session) — scoped tightly to a single order
-// that must already exist and be PENDING, so it can't be used to tamper with
-// unrelated or already-processed orders.
+// that must already exist and not yet be finalized, so it can't be used to
+// tamper with unrelated or already-resolved orders.
 // Uploads the screenshot to the `payment-screenshots` bucket, stores the URL
-// on the order, and flips status PENDING → AWAITING_VERIFICATION so an admin
-// can manually confirm the payment before it's marked PAID.
+// on the order, and sets status to AWAITING_VERIFICATION so an admin can
+// manually confirm the payment before it's marked PAID. Callable again while
+// still PENDING/AWAITING_VERIFICATION so the customer can swap in a
+// different screenshot before it's confirmed as PAID.
 
 export async function POST(
   req: NextRequest,
@@ -27,7 +29,8 @@ export async function POST(
   if (lookupErr || !order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
-  if (order.status !== "PENDING") {
+  const editableStatuses = ["PENDING", "AWAITING_VERIFICATION"];
+  if (!editableStatuses.includes(order.status)) {
     return NextResponse.json(
       { error: "This order has already been processed" },
       { status: 409 },

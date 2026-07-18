@@ -31,9 +31,9 @@ const STATUS_STYLES: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-medium
       ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-500 border border-gray-200"}`}>
-      {status}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -177,7 +177,7 @@ export function OrdersTable({ initialOrders }: { initialOrders: OrderListRow[] }
       {/* ── Table ────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* Header */}
-        <div className="grid grid-cols-[140px_1fr_130px_110px_110px_110px] items-center gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+        <div className="grid grid-cols-[120px_1fr_120px_100px_170px_90px] items-center gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5">
           {(["Order", "Customer", "Phone", "Total", "Status", "Date"] as const).map((h) => (
             <span key={h} className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</span>
           ))}
@@ -193,7 +193,7 @@ export function OrdersTable({ initialOrders }: { initialOrders: OrderListRow[] }
               <div
                 key={o.id}
                 onClick={() => router.push(`/admin/orders/${o.id}`)}
-                className="grid cursor-pointer grid-cols-[140px_1fr_130px_110px_110px_110px] items-center gap-3 px-4 py-3 hover:bg-gray-50/70 transition-colors"
+                className="grid cursor-pointer grid-cols-[120px_1fr_120px_100px_170px_90px] items-center gap-3 px-4 py-3 hover:bg-gray-50/70 transition-colors"
               >
                 {/* Order ref */}
                 <div>

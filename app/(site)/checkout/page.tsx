@@ -390,7 +390,11 @@ export default function CheckoutPage() {
 // WhatsApp button afterwards is a notification convenience, not the thing
 // that records the order.
 
-type UploadState = "idle" | "uploading" | "done" | "error";
+// "idle"     — nothing picked yet
+// "selected" — a file is picked and previewed locally, not uploaded yet —
+//              the customer can still change it before confirming
+// "uploading"/"done"/"error" — the confirmed upload's own request state
+type UploadState = "idle" | "selected" | "uploading" | "done" | "error";
 
 function PaymentStep({
   orderId,
@@ -415,19 +419,31 @@ function PaymentStep({
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [previewUrl,    setPreviewUrl]    = useState<string | null>(null);
   const [uploadError,   setUploadError]   = useState<string | null>(null);
+  const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Picking a file only previews it locally — nothing is sent to the server
+  // yet, so the customer can pick a different one before confirming.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    setUploadState("selected");
+    setUploadError(null);
+  }
+
+  // Only now does the screenshot actually get uploaded and the order marked
+  // AWAITING_VERIFICATION — the customer has already confirmed it's the right one.
+  async function handleConfirmScreenshot() {
+    if (!selectedFile) return;
     setUploadState("uploading");
     setUploadError(null);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", selectedFile);
 
       const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
         method: "POST",
@@ -525,28 +541,55 @@ function PaymentStep({
             </button>
           )}
 
+          {/* Picked but not yet confirmed — customer can still swap it out */}
+          {(uploadState === "selected" || uploadState === "error") && previewUrl && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-xl border border-navy/10 bg-blush/10 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewUrl} alt="Payment screenshot preview" className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />
+                <div className="min-w-0 flex-1">
+                  {uploadState === "error" ? (
+                    <p className="font-body text-xs text-red-600">{uploadError}</p>
+                  ) : (
+                    <p className="font-body text-xs text-navy/55">Ready to confirm</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-0.5 font-body text-xs text-terracotta underline underline-offset-2"
+                  >
+                    Choose a different image
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleConfirmScreenshot}
+                className="w-full rounded-full bg-navy py-3 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-navy/90"
+              >
+                {uploadState === "error" ? "Try Again" : "Confirm This Screenshot"}
+              </button>
+            </div>
+          )}
+
           {uploadState === "uploading" && (
             <div className="flex items-center justify-center gap-2 rounded-full border-2 border-navy/10 py-3.5 font-body text-sm text-navy/50">
               <SpinnerIcon /> Uploading screenshot…
             </div>
           )}
 
-          {(uploadState === "done" || uploadState === "error") && previewUrl && (
+          {uploadState === "done" && previewUrl && (
             <div className="flex items-center gap-3 rounded-xl border border-navy/10 bg-blush/10 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewUrl} alt="Payment screenshot preview" className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
-                {uploadState === "done" ? (
-                  <p className="font-body text-xs font-medium text-green-700">✓ Screenshot uploaded</p>
-                ) : (
-                  <p className="font-body text-xs text-red-600">{uploadError}</p>
-                )}
+                <p className="font-body text-xs font-medium text-green-700">✓ Screenshot uploaded</p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-0.5 font-body text-xs text-terracotta underline underline-offset-2"
                 >
-                  {uploadState === "done" ? "Replace" : "Try again"}
+                  Change screenshot
                 </button>
               </div>
             </div>
