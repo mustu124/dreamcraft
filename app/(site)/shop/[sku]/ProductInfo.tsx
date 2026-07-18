@@ -21,6 +21,7 @@ export type ProductInfoData = {
   images: string[];
   variants: { id: string; label: string; price: number }[];
   isCandleCategory: boolean;
+  showPlantsNote: boolean;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -172,6 +173,12 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
           </span>
           <QtyPicker qty={qty} onChange={setQty} />
         </div>
+
+        {product.showPlantsNote && (
+          <p className="font-body text-xs italic text-navy/45">
+            Prices mentioned are exclusive of flowers and plants
+          </p>
+        )}
 
         {/* Add to Cart — primary */}
         <button

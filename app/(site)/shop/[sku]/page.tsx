@@ -116,6 +116,7 @@ export default async function ProductPage({
     images:           sortedImages,
     variants:         p.product_variants.map((v) => ({ id: v.id, label: v.label, price: v.price })),
     isCandleCategory: (p.categories?.slug ?? "") === "candles",
+    showPlantsNote:   (p.categories?.slug ?? "") === "planters-organisers",
   };
 
   // ── Transform related into ShopProduct shape ──────────────
