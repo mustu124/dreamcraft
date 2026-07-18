@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
+import { PRICE_UNIT_LABELS } from "@/lib/config/priceUnitLabels";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Exported so page.tsx can build this shape server-side.
@@ -62,11 +63,15 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   // For a single-variant product, the variant label (e.g. "Per piece",
   // "Set of 2") never appears anywhere else since the size selector only
   // renders when there are multiple variants — so show it next to the price
-  // instead, unless it's just the generic "Standard" placeholder.
+  // instead, unless it's just the generic "Standard" placeholder. Some
+  // multi-variant products (e.g. several tray shapes, all "per tray") also
+  // want a qualifier that stays fixed regardless of which one is selected —
+  // that comes from PRICE_UNIT_LABELS instead of the variant's own label.
   const priceQualifier =
-    product.variants.length === 1 && variant && variant.label.toLowerCase() !== "standard"
+    PRICE_UNIT_LABELS[product.sku] ??
+    (product.variants.length === 1 && variant && variant.label.toLowerCase() !== "standard"
       ? variant.label.toLowerCase()
-      : null;
+      : null);
 
   const priceFormatted = variant
     ? `₹${variant.price.toLocaleString("en-IN")}`
