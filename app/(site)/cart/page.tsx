@@ -1,14 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import type { CartItem } from "@/contexts/CartContext";
+import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart } from "@/contexts/CartContext";
 import { calcShipping, rupee } from "@/lib/config/shipping";
+
+function formatSyncNotice(notice: CartSyncResult | null): string | null {
+  if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
+  const parts: string[] = [];
+  if (notice.removed.length) parts.push(`removed (no longer available): ${notice.removed.join(", ")}`);
+  if (notice.updated.length) parts.push(`price/details updated: ${notice.updated.join(", ")}`);
+  return `Your cart was updated — ${parts.join("; ")}.`;
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CartPage() {
-  const { items, totalPrice, setQty, removeItem } = useCart();
+  const { items, totalPrice, setQty, removeItem, syncNotice, clearSyncNotice } = useCart();
+
+  // The provider re-resolves the cart against the live catalogue right after
+  // hydrating it — surface the result here until the customer dismisses it.
+  const cartNotice = formatSyncNotice(syncNotice);
 
   const subtotal = totalPrice;
   const shipping = calcShipping(subtotal);
@@ -29,6 +41,22 @@ export default function CartPage() {
           )}
         </h1>
       </div>
+
+      {cartNotice && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div role="status" className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-800">
+            <span className="flex-1">{cartNotice}</span>
+            <button
+              type="button"
+              onClick={clearSyncNotice}
+              aria-label="Dismiss"
+              className="flex-shrink-0 text-amber-500 hover:text-amber-700"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Body ──────────────────────────────────────────────────── */}
       <div className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">

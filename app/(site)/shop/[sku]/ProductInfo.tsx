@@ -24,6 +24,21 @@ export type ProductInfoData = {
   showPlantsNote: boolean;
 };
 
+// ── Description formatting ────────────────────────────────────────────────────
+// Breaks the description onto a new line right before "Size:"/"Sizes:" (with
+// or without an "Available" prefix), so the dimensions read as their own line
+// instead of running on from the marketing copy.
+
+function formatDescription(description: string) {
+  const parts = description.split(/(?=(?:Available\s+)?[Ss]izes?:)/);
+  return parts.map((part, i) => (
+    <span key={i}>
+      {i > 0 && <br />}
+      {part.trim()}
+    </span>
+  ));
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProductInfo({ product }: { product: ProductInfoData }) {
@@ -207,7 +222,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       {/* ── Description ───────────────────────────────────────── */}
       {product.description && (
         <p className="font-body text-sm leading-relaxed text-navy/65 md:text-base">
-          {product.description}
+          {formatDescription(product.description)}
         </p>
       )}
 

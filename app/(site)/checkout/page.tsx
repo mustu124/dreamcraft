@@ -3,9 +3,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCart, type CartItem } from "@/contexts/CartContext";
+import { useCart, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
 import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
+
+function formatSyncNotice(notice: CartSyncResult | null): string | null {
+  if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
+  const parts: string[] = [];
+  if (notice.removed.length) parts.push(`removed (no longer available): ${notice.removed.join(", ")}`);
+  if (notice.updated.length) parts.push(`price/details updated: ${notice.updated.join(", ")}`);
+  return `Your cart was updated — ${parts.join("; ")}.`;
+}
 
 // Razorpay is intentionally not wired up right now — the client-side modal
 // logic still lives at lib/payments/razorpay-client.ts and the server routes
@@ -73,7 +81,7 @@ function validate(d: FormData): FormErrors {
 
 export default function CheckoutPage() {
   const router           = useRouter();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice } = useCart();
 
   const subtotal = totalPrice;
   const shipping = calcShipping(subtotal);
@@ -109,6 +117,12 @@ export default function CheckoutPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, items.length]);
 
+  // ── Cart-sync notice ────────────────────────────────────────
+  // The provider re-resolves the cart against the live catalogue right after
+  // hydrating it (handles a size getting renamed/removed in the admin panel
+  // while this cart sat in localStorage) — surface the result until dismissed.
+  const cartNotice = formatSyncNotice(syncNotice);
+
   // ── Field helpers ──────────────────────────────────────────
   function setField(field: keyof FormData, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -129,6 +143,18 @@ export default function CheckoutPage() {
 
     setStatus("submitting");
     setSubmitError(null);
+
+    // Last-second re-check against the live catalogue — catches a price/size
+    // change made while the customer was filling out this form, instead of
+    // letting the order POST fail with a raw "variant not found" error.
+    const { removed, updated } = await syncCart();
+    if (removed.length > 0 || updated.length > 0) {
+      setStatus("error");
+      setSubmitError(
+        formatSyncNotice({ removed, updated })! + " Please review your cart and place the order again."
+      );
+      return;
+    }
 
     try {
       const ordersRes = await fetch("/api/orders", {
@@ -221,6 +247,20 @@ export default function CheckoutPage() {
               No account needed — just fill in your details.
             </p>
           </div>
+
+          {cartNotice && (
+            <div role="status" className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-800">
+              <span className="flex-1">{cartNotice}</span>
+              <button
+                type="button"
+                onClick={clearSyncNotice}
+                aria-label="Dismiss"
+                className="flex-shrink-0 text-amber-500 hover:text-amber-700"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* fieldset disabled disables all controls at once */}
           <fieldset disabled={isWorking} className="contents">
