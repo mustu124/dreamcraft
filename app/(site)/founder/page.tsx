@@ -138,7 +138,8 @@ export default function FounderPage() {
             Explore the Collection
           </h2>
           <p className="mt-4 font-body text-sm text-ivory/75 md:text-base">
-            Every piece is made by hand, made with love, made for you.
+            From custom creations to timeless designs, every piece is made
+            with care, creativity and love in India.
           </p>
           <Link
             href="/shop"

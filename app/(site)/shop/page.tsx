@@ -131,12 +131,16 @@ export default async function ShopPage({
   });
 
   // ── Filter categories prop (strip subcategory sort_order) ──────
-  const filterCategories: FilterCategory[] = categories.map((c) => ({
-    id:   c.id,
-    name: c.name,
-    slug: c.slug,
-    subcategories: c.subcategories.map((s) => ({ id: s.id, name: s.name, slug: s.slug })),
-  }));
+  // Candles is de-emphasized in nav/filters site-wide, but stays a real,
+  // directly-linkable category — products and data are untouched.
+  const filterCategories: FilterCategory[] = categories
+    .filter((c) => c.slug !== "candles")
+    .map((c) => ({
+      id:   c.id,
+      name: c.name,
+      slug: c.slug,
+      subcategories: c.subcategories.map((s) => ({ id: s.id, name: s.name, slug: s.slug })),
+    }));
 
   // ── Page URL builder (for pagination links) ────────────────────
   function pageUrl(p: number) {

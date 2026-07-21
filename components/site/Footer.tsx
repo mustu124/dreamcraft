@@ -32,8 +32,8 @@ export default function Footer({ categories }: { categories: Category[] }) {
               <p className="font-heading italic text-2xl text-ivory">Dreamcraft</p>
             </div>
             <p className="text-sm leading-relaxed text-ivory/70">
-              Your Dreams, Our Craft!! — handmade home decor &amp; candles,
-              made with love in India.
+              Your Dreams, Our Craft!! — Beautifully handcrafted decor, made
+              to turn everyday moments into something special.
             </p>
           </div>
 

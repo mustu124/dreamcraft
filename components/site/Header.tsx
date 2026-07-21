@@ -11,7 +11,6 @@ import type { NavLink } from "./MobileMenu";
 const NAV: NavLink[] = [
   { label: "Home",           href: "/" },
   { label: "Shop",           href: "/shop" },
-  { label: "Candles",        href: "/shop?category=soy-candles" },
   { label: "Founder's Story",href: "/founder" },
   { label: "About",          href: "/about" },
   { label: "Gallery",        href: "/gallery" },

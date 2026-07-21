@@ -14,11 +14,15 @@ export default async function SiteLayout({
     .select("name, slug")
     .order("sort_order");
 
+  // Candles gets de-emphasized site-wide — kept as a real, browsable category
+  // (products/data untouched), just not listed in the footer's Shop links.
+  const footerCategories = (categories ?? []).filter((c) => c.slug !== "candles");
+
   return (
     <CartProvider>
       <Header />
       <main className="min-h-screen pt-20">{children}</main>
-      <Footer categories={categories ?? []} />
+      <Footer categories={footerCategories} />
     </CartProvider>
   );
 }

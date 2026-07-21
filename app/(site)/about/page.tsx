@@ -17,11 +17,14 @@ export default function AboutPage() {
             Who We Are
           </p>
           <h1 className="font-heading italic text-4xl text-navy md:text-5xl">
-            Made with love,<br />made by hand
+            Crafted to make everyday moments beautiful.
           </h1>
           <p className="mx-auto mt-6 max-w-xl font-body text-base leading-relaxed text-navy/65 md:text-lg">
-            Dreamcraft is a small handmade studio creating eco-resin home decor and
-            soy wax candles — each piece thoughtfully crafted to order in India.
+            Dreamcraft is a handmade home decor brand creating thoughtfully
+            designed pieces that add warmth, elegance, and personality to
+            everyday living. Every item is handcrafted in India using
+            eco-resin and carefully selected materials, blending modern
+            aesthetics with timeless craftsmanship.
           </p>
         </div>
       </section>
@@ -31,9 +34,6 @@ export default function AboutPage() {
         <div className="mx-auto max-w-5xl px-5">
           <div className="grid gap-12 md:grid-cols-2 md:gap-16 items-center">
             <div>
-              <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-terracotta">
-                Our Craft
-              </p>
               <h2 className="mb-5 font-heading italic text-3xl text-navy md:text-4xl">
                 Craftsmanship &amp; Customization
               </h2>
@@ -57,10 +57,10 @@ export default function AboutPage() {
             </div>
             <div className="flex flex-col gap-4">
               {[
-                { title: "Eco-Resin",         desc: "Premium casting blend, carefully poured and shaped by hand." },
-                { title: "Cured 24 Hours",    desc: "Natural curing ensures strength, durability, and a flawless finish." },
-                { title: "Protective Coating", desc: "Water-resistant, moisture-resistant, and easy to maintain." },
-                { title: "Long-Lasting Shine", desc: "A finish that preserves the charm of each piece for years to come." },
+                { title: "Eco-Resin",           desc: "Made with high-quality eco-resin, each piece is individually hand-poured, making every creation uniquely yours." },
+                { title: "Cured for 24 Hours",  desc: "Each piece is naturally cured for 24 hours to achieve exceptional strength, durability, and a flawless finish." },
+                { title: "Protective Coating",  desc: "Sealed with a protective coating for enhanced water resistance, moisture protection, and effortless maintenance." },
+                { title: "Long-Lasting Finish", desc: "A durable finish that preserves the beauty of every handcrafted piece for years to come." },
               ].map(({ title, desc }) => (
                 <div
                   key={title}
@@ -84,10 +84,10 @@ export default function AboutPage() {
           <div className="grid gap-12 md:grid-cols-2 md:gap-16 items-center">
             <div className="order-2 md:order-1 flex flex-col gap-4">
               {[
-                { title: "Custom-Made",     desc: "Every creation is crafted especially for you — never mass-produced." },
-                { title: "100% Soy Wax",    desc: "All candles are hand-poured using premium soy wax for a clean, long-lasting burn." },
-                { title: "Attention to Detail", desc: "Small-batch production keeps the focus on quality and individuality." },
-                { title: "Advance Ordering", desc: "As each piece is handmade, we kindly request advance ordering." },
+                { title: "Custom-Made",         desc: "Every piece is handcrafted just for you—never mass-produced." },
+                { title: "100% Soy Wax",        desc: "Our candles are hand-poured with premium soy wax for a clean, even, and long-lasting burn." },
+                { title: "Attention to Detail", desc: "Every creation is carefully finished by hand, ensuring exceptional quality and lasting beauty." },
+                { title: "Made to Order",       desc: "Each piece is created after your order is placed, ensuring the time and care every handcrafted item deserves." },
               ].map(({ title, desc }) => (
                 <div
                   key={title}
@@ -103,25 +103,26 @@ export default function AboutPage() {
             </div>
             <div className="order-1 md:order-2">
               <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-gold">
-                How We Work
+                From Our Hands To Your Home
               </p>
               <h2 className="mb-5 font-heading italic text-3xl text-navy md:text-4xl">
                 Made-to-Order
               </h2>
               <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
-                Every Dreamcraft creation is custom-made and crafted especially for
-                you. We do not mass-produce our collections, allowing us to focus
-                on quality, individuality, and attention to detail.
+                At Dreamcraft, every piece is thoughtfully handcrafted once you
+                place your order—never mass-produced. This allows us to focus
+                on quality, individuality, and the attention to detail that
+                makes each creation truly special.
               </p>
               <p className="mb-4 font-body text-base leading-relaxed text-navy/65">
-                All our candles are hand-poured using premium soy wax, ensuring a
-                clean, long-lasting burn while bringing warmth, fragrance, and
-                elegance to your home.
+                Our candles are hand-poured using premium soy wax, offering a
+                clean, long-lasting burn that brings warmth and comfort to
+                your home.
               </p>
               <p className="font-body text-base leading-relaxed text-navy/65">
-                As each piece is handmade, we kindly request advance ordering to
-                allow sufficient production time and ensure every creation
-                receives the care it deserves.
+                Because every order is made by hand, we recommend placing
+                your order in advance to allow sufficient time for crafting,
+                curing, and finishing each piece.
               </p>
             </div>
           </div>
@@ -142,8 +143,8 @@ export default function AboutPage() {
             variety of customization options, including:
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {["Choice of Colors", "Solid or Marble-Effect Finish", "Multi-Color Blends",
-              "Personalized Names & Dates", "Brand Logos for Corporate Gifting", "Custom Wedding Designs"].map((tag) => (
+            {["Choice of Colors", "Solid or Marble Finish", "Multi-Color Blends",
+              "Personalized Names & Dates", "Corporate Branding & Logos", "Custom Wedding Designs"].map((tag) => (
               <span
                 key={tag}
                 className="rounded-full border border-terracotta/25 bg-blush/30 px-4 py-1.5
@@ -154,9 +155,8 @@ export default function AboutPage() {
             ))}
           </div>
           <p className="mx-auto mt-8 max-w-xl font-body text-base leading-relaxed text-navy/65">
-            Whether you are creating a meaningful gift, commemorating a
-            milestone, or designing a piece that perfectly complements your
-            space, we will work with you to bring your vision to life.
+            From thoughtful gifts to bespoke home decor, every piece is
+            designed to reflect your style and handcrafted just for you.
           </p>
         </div>
       </section>
@@ -183,7 +183,8 @@ export default function AboutPage() {
             Explore the Collection
           </h2>
           <p className="mt-4 font-body text-sm text-ivory/75 md:text-base">
-            Each piece is made by hand, made with love, made for you.
+            From custom creations to timeless designs, every piece is made
+            with care, creativity and love in India.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link

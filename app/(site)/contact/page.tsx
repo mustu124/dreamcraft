@@ -108,7 +108,7 @@ export default function ContactPage() {
             {[
               {
                 q: "How long does an order take to ship?",
-                a: "All pieces are made to order. Please allow 5 – 7 business days for production, plus 2 – 3 days for shipping within India.",
+                a: "As every piece is handmade, we require 4 business days to craft your order. Once ready, shipping within India typically takes 5–7 business days.",
               },
               {
                 q: "Can I request a fully custom design?",
@@ -116,7 +116,7 @@ export default function ContactPage() {
               },
               {
                 q: "Do you accept bulk / corporate gifting orders?",
-                a: "Yes! We cater to corporate gifting with branded packaging and custom Eco-Resin pieces. Contact us with your quantity and deadline for a quote.",
+                a: "Yes! For bulk orders, corporate, and event gifting, contact us directly at 9008448040.",
               },
               {
                 q: "What is your return or exchange policy?",
