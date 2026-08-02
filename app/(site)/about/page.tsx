@@ -139,8 +139,10 @@ export default function AboutPage() {
             Personalization &amp; Customization
           </h2>
           <p className="mx-auto mb-8 max-w-xl font-body text-base leading-relaxed text-navy/65">
-            Your story is unique, and your decor should be too. We offer a
-            variety of customization options, including:
+            Every space tells a story, and your decor should too. Whether
+            you're looking for a one-of-a-kind piece or a meaningful gift, we
+            offer a range of customization options to create something
+            that's uniquely yours.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {["Choice of Colors", "Solid or Marble Finish", "Multi-Color Blends",
