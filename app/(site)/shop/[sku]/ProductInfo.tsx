@@ -9,8 +9,9 @@ import {
   DARK_SHADES,
   PASTEL_SHADES,
   COLOR_GROUP_LABELS,
-  COLOR_PICKER_EXCLUDED_CATEGORY_SLUG,
+  COLOR_FINISH_LABELS,
   type ColorGroup,
+  type ColorFinish,
 } from "@/lib/config/colorOptions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,29 +54,32 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   const router           = useRouter();
   const [variantIdx, setVariantIdx] = useState(0);
   const [qty, setQty]               = useState(1);
-  const [colorGroup, setColorGroup] = useState<ColorGroup | null>(null);
-  const [colorShade, setColorShade] = useState<string | null>(null);
+  const [colorGroup, setColorGroup]   = useState<ColorGroup | null>(null);
+  const [colorShade, setColorShade]   = useState<string | null>(null);
+  const [colorFinish, setColorFinish] = useState<ColorFinish | null>(null);
 
   const variant = product.variants[variantIdx];
 
-  // Every product except Customization (which is fully bespoke via
-  // Contact/WhatsApp already) offers this color/finish preference. It's a
-  // note for the artisan, not a real priced variant — no price/stock change.
-  const requiresColor = product.categorySlug !== COLOR_PICKER_EXCLUDED_CATEGORY_SLUG;
-
+  // Every product requires this color/finish preference — a note for the
+  // artisan, not a real priced variant, so it never changes price/stock.
+  // Flow: shade group -> specific shade -> finish (Blocked or Marble), all
+  // three required before the product can be added to the cart.
   const colorLabel =
-    colorGroup === "dark" && colorShade ? `${colorShade} (Dark)` :
-    colorGroup === "pastel" && colorShade ? `${colorShade} (Pastel)` :
-    colorGroup === "blocked" ? "Blocked (Solid Color)" :
-    colorGroup === "marble" ? "Marble Finish" :
-    null;
+    colorGroup && colorShade && colorFinish
+      ? `${colorShade} (${COLOR_GROUP_LABELS[colorGroup]}, ${COLOR_FINISH_LABELS[colorFinish]})`
+      : null;
 
-  const colorSatisfied = !requiresColor || !!colorLabel;
-  const canSubmit = !!variant && colorSatisfied;
+  const canSubmit = !!variant && !!colorLabel;
 
   function selectColorGroup(g: ColorGroup) {
     setColorGroup(g);
     setColorShade(null);
+    setColorFinish(null);
+  }
+
+  function selectColorShade(shade: string) {
+    setColorShade(shade);
+    setColorFinish(null);
   }
 
   // Each addItem increments by 1; calling qty times gives the user-selected count.
@@ -209,59 +213,83 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       )}
 
       {/* ── Color selector ──────────────────────────────────────── */}
-      {requiresColor && (
-        <div>
-          <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
-            Color *
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+      <div>
+        <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
+          Color *
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => selectColorGroup(g)}
+              aria-pressed={colorGroup === g}
+              className={[
+                "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                colorGroup === g
+                  ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                  : "border-navy/18 text-navy/65 hover:border-navy/45",
+              ].join(" ")}
+            >
+              {COLOR_GROUP_LABELS[g]}
+            </button>
+          ))}
+        </div>
+
+        {colorGroup && (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
               <button
-                key={g}
+                key={shade.name}
                 type="button"
-                onClick={() => selectColorGroup(g)}
-                aria-pressed={colorGroup === g}
+                onClick={() => selectColorShade(shade.name)}
+                aria-pressed={colorShade === shade.name}
+                aria-label={shade.name}
+                title={shade.name}
                 className={[
-                  "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-                  colorGroup === g
-                    ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
-                    : "border-navy/18 text-navy/65 hover:border-navy/45",
+                  "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
+                  colorShade === shade.name
+                    ? "ring-2 ring-terracotta ring-offset-2 scale-110"
+                    : "hover:scale-105",
                 ].join(" ")}
-              >
-                {COLOR_GROUP_LABELS[g]}
-              </button>
+                style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
+              />
             ))}
           </div>
+        )}
 
-          {(colorGroup === "dark" || colorGroup === "pastel") && (
-            <div className="mt-3 flex flex-wrap gap-3">
-              {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
+        {colorShade && (
+          <div className="mt-3">
+            <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
+              Finish *
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
                 <button
-                  key={shade.name}
+                  key={f}
                   type="button"
-                  onClick={() => setColorShade(shade.name)}
-                  aria-pressed={colorShade === shade.name}
-                  aria-label={shade.name}
-                  title={shade.name}
+                  onClick={() => setColorFinish(f)}
+                  aria-pressed={colorFinish === f}
                   className={[
-                    "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
-                    colorShade === shade.name
-                      ? "ring-2 ring-terracotta ring-offset-2 scale-110"
-                      : "hover:scale-105",
+                    "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                    colorFinish === f
+                      ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                      : "border-navy/18 text-navy/65 hover:border-navy/45",
                   ].join(" ")}
-                  style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
-                />
+                >
+                  {COLOR_FINISH_LABELS[f]}
+                </button>
               ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {colorLabel && (
-            <p className="mt-2.5 font-body text-xs text-navy/50">
-              Selected: {colorLabel}
-            </p>
-          )}
-        </div>
-      )}
+        {colorLabel && (
+          <p className="mt-2.5 font-body text-xs text-navy/50">
+            Selected: {colorLabel}
+          </p>
+        )}
+      </div>
 
       {/* ── Quantity + actions ────────────────────────────────── */}
       <div className="flex flex-col gap-3">
