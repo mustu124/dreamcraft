@@ -122,7 +122,7 @@ export default function FounderPage() {
 
           {/* Signature — italic script feel via font-heading */}
           <p className="mt-10 font-heading italic text-2xl text-navy">
-            — Ashima, Creator, Dreamcraft
+            — Ashima, Creator,<br />Dreamcraft
           </p>
 
         </div>

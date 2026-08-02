@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import NewsletterSignup from "./NewsletterSignup";
 
 type Category = { name: string; slug: string };
 
@@ -15,6 +16,11 @@ export default function Footer({ categories }: { categories: Category[] }) {
   return (
     <footer className="bg-navy font-body text-ivory">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-14 pb-8">
+
+        {/* Newsletter signup */}
+        <div className="mb-14">
+          <NewsletterSignup />
+        </div>
 
         {/* Top grid — 1 col on mobile, 2 on sm, 4 on lg */}
         <div className="grid grid-cols-1 gap-10 pb-10 sm:grid-cols-2 lg:grid-cols-4 border-b border-ivory/10">
@@ -78,16 +84,18 @@ export default function Footer({ categories }: { categories: Category[] }) {
               <li>
                 <a
                   href="tel:+919008448040"
-                  className="transition-colors hover:text-gold"
+                  className="flex items-center gap-2.5 transition-colors hover:text-gold"
                 >
+                  <PhoneIcon />
                   +91 9008 448040
                 </a>
               </li>
               <li>
                 <a
                   href="mailto:hello@mydreamcraft.com"
-                  className="break-all transition-colors hover:text-gold"
+                  className="flex items-center gap-2.5 break-all transition-colors hover:text-gold"
                 >
+                  <MailIcon />
                   hello@mydreamcraft.com
                 </a>
               </li>
@@ -96,8 +104,9 @@ export default function Footer({ categories }: { categories: Category[] }) {
                   href="https://instagram.com/Dreamcraft_homedecor"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="transition-colors hover:text-gold"
+                  className="flex items-center gap-2.5 transition-colors hover:text-gold"
                 >
+                  <InstagramIcon />
                   @Dreamcraft_homedecor
                 </a>
               </li>
@@ -111,5 +120,37 @@ export default function Footer({ categories }: { categories: Category[] }) {
         </p>
       </div>
     </footer>
+  );
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 flex-shrink-0" aria-hidden>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 flex-shrink-0" aria-hidden>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 flex-shrink-0" aria-hidden>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
   );
 }
