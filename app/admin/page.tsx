@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type RecentOrder = {
-  id:         string;
-  full_name:  string;
-  total:      number;
-  status:     string;
-  created_at: string;
+  id:            string;
+  customer_name: string;
+  total:         number;
+  status:        string;
+  created_at:    string;
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ export default async function AdminDashboardPage() {
     supabase.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase
       .from("orders")
-      .select("id, full_name, total, status, created_at")
+      .select("id, customer_name, total, status, created_at")
       .order("created_at", { ascending: false })
       .limit(5)
       .returns<RecentOrder[]>(),
@@ -129,7 +129,7 @@ export default async function AdminDashboardPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-sm text-gray-900">{order.full_name}</span>
+                        <span className="text-sm text-gray-900">{order.customer_name}</span>
                       </td>
                       <td className="px-5 py-4">
                         <span className="text-sm font-medium text-gray-900">
@@ -151,32 +151,6 @@ export default async function AdminDashboardPage() {
         )}
       </section>
 
-      {/* ── Quick links ─────────────────────────────────────── */}
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {[
-            { href: "/admin/products/new",    label: "Add Product",    emoji: "📦" },
-            { href: "/admin/categories/new",  label: "Add Category",   emoji: "🏷️" },
-            { href: "/admin/banners/new",     label: "New Banner",     emoji: "🖼️" },
-            { href: "/admin/testimonials/new",label: "Add Review",     emoji: "⭐" },
-            { href: "/admin/gallery/new",     label: "Upload Photo",   emoji: "📸" },
-            { href: "/admin/orders",          label: "View Orders",    emoji: "🧾" },
-            { href: "/admin/process-clips/new", label: "Add Clip",     emoji: "🎬" },
-            { href: "/admin/bestsellers",     label: "Bestsellers",    emoji: "🔥" },
-          ].map((action) => (
-            <a
-              key={action.href}
-              href={action.href}
-              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4
-                         shadow-sm transition-all hover:border-terracotta/40 hover:shadow-md"
-            >
-              <span className="text-xl">{action.emoji}</span>
-              <span className="text-sm font-medium text-gray-700">{action.label}</span>
-            </a>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
@@ -216,16 +190,17 @@ function StatCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    PAID:    "bg-green-100 text-green-700",
-    PENDING: "bg-amber-100 text-amber-700",
-    FAILED:  "bg-red-100 text-red-700",
+    PAID:                  "bg-green-100 text-green-700",
+    PENDING:               "bg-amber-100 text-amber-700",
+    AWAITING_VERIFICATION: "bg-blue-50 text-blue-700",
+    FAILED:                "bg-red-100 text-red-700",
   };
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold
+      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold
                   ${styles[status] ?? "bg-gray-100 text-gray-600"}`}
     >
-      {status}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
