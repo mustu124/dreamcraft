@@ -36,7 +36,8 @@ const NAV: NavGroup[] = [
   {
     label: "Sales",
     items: [
-      { href: "/admin/orders", label: "Orders", icon: <OrderIcon /> },
+      { href: "/admin/orders",      label: "Orders",      icon: <OrderIcon /> },
+      { href: "/admin/newsletter",  label: "Newsletter",  icon: <MailIcon /> },
     ],
   },
 ];
@@ -175,6 +176,16 @@ function OrderIcon() {
       <rect x="9" y="3" width="6" height="4" rx="1" />
       <line x1="9" y1="12" x2="15" y2="12" />
       <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+      strokeLinecap="round" strokeLinejoin="round" className="h-full w-full">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
     </svg>
   );
 }
