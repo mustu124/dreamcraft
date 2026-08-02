@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCart, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
+import { useCart, cartLineKey, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
 import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
 
@@ -167,6 +167,7 @@ export default function CheckoutPage() {
             sku:          i.sku,
             name:         i.name,
             variantLabel: i.variantLabel,
+            colorLabel:   i.colorLabel,
             qty:          i.qty,
           })),
           address: {
@@ -515,6 +516,7 @@ function PaymentStep({
       items: snapshot.items.map((i) => ({
         name: i.name,
         variantLabel: i.variantLabel,
+        colorLabel: i.colorLabel,
         qty: i.qty,
         price: i.price,
       })),
@@ -671,7 +673,7 @@ function CheckoutSummary({
       {/* Line items */}
       <div className="mb-4 space-y-3 border-b border-navy/8 pb-4">
         {items.map((item) => (
-          <div key={item.variantId} className="flex items-start gap-3">
+          <div key={cartLineKey(item)} className="flex items-start gap-3">
             <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-blush/25">
               {item.image && item.image !== "/placeholder-product.jpg" ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -689,7 +691,8 @@ function CheckoutSummary({
                 {item.name}
               </span>
               <span className="font-body text-[10px] text-navy/40">
-                {item.variantLabel} · qty {item.qty}
+                {item.variantLabel}
+                {item.colorLabel && ` · ${item.colorLabel}`} · qty {item.qty}
               </span>
             </div>
             <span className="flex-shrink-0 font-body text-xs text-navy/70">

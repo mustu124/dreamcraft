@@ -11,7 +11,17 @@ export type CartItem = {
   price: number; // INR whole rupees
   qty: number;
   image: string;
+  // Customer's color/finish preference for the artisan — a note, not a
+  // priced variant, so it's absent for Customization-category items.
+  colorLabel?: string;
 };
+
+// A cart line is identified by variantId *plus* colorLabel — two lines can
+// now share the same size/variant but differ by color preference, so
+// variantId alone is no longer a unique key for remove/set-qty/dedup.
+export function cartLineKey(item: { variantId: string; colorLabel?: string }): string {
+  return `${item.variantId}::${item.colorLabel ?? ""}`;
+}
 
 // Keyed by the cart item's *current* variantId. `null` means the item is no
 // longer resolvable (product deactivated or that size no longer exists) and
@@ -21,8 +31,8 @@ type SyncUpdates = Record<string, { variantId: string; productId: string; price:
 type Action =
   | { type: "LOAD"; payload: CartItem[] }
   | { type: "ADD"; item: Omit<CartItem, "qty"> }
-  | { type: "REMOVE"; variantId: string }
-  | { type: "SET_QTY"; variantId: string; qty: number }
+  | { type: "REMOVE"; lineKey: string }
+  | { type: "SET_QTY"; lineKey: string; qty: number }
   | { type: "SYNC"; updates: SyncUpdates }
   | { type: "CLEAR" };
 
@@ -31,7 +41,8 @@ function reducer(state: CartItem[], action: Action): CartItem[] {
     case "LOAD":
       return action.payload;
     case "ADD": {
-      const idx = state.findIndex((i) => i.variantId === action.item.variantId);
+      const key = cartLineKey(action.item);
+      const idx = state.findIndex((i) => cartLineKey(i) === key);
       if (idx >= 0) {
         return state.map((i, n) =>
           n === idx ? { ...i, qty: i.qty + 1 } : i
@@ -40,12 +51,12 @@ function reducer(state: CartItem[], action: Action): CartItem[] {
       return [...state, { ...action.item, qty: 1 }];
     }
     case "REMOVE":
-      return state.filter((i) => i.variantId !== action.variantId);
+      return state.filter((i) => cartLineKey(i) !== action.lineKey);
     case "SET_QTY":
       if (action.qty <= 0)
-        return state.filter((i) => i.variantId !== action.variantId);
+        return state.filter((i) => cartLineKey(i) !== action.lineKey);
       return state.map((i) =>
-        i.variantId === action.variantId ? { ...i, qty: action.qty } : i
+        cartLineKey(i) === action.lineKey ? { ...i, qty: action.qty } : i
       );
     case "SYNC":
       return state.flatMap((i) => {
@@ -68,8 +79,8 @@ type CartCtx = {
   totalItems: number;
   totalPrice: number;
   addItem: (item: Omit<CartItem, "qty">) => void;
-  removeItem: (variantId: string) => void;
-  setQty: (variantId: string, qty: number) => void;
+  removeItem: (lineKey: string) => void;
+  setQty: (lineKey: string, qty: number) => void;
   clearCart: () => void;
   syncCart: () => Promise<CartSyncResult>;
   // Set once, right after the cart is hydrated from localStorage, if that
@@ -202,8 +213,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         totalItems,
         totalPrice,
         addItem: (item) => dispatch({ type: "ADD", item }),
-        removeItem: (variantId) => dispatch({ type: "REMOVE", variantId }),
-        setQty: (variantId, qty) => dispatch({ type: "SET_QTY", variantId, qty }),
+        removeItem: (lineKey) => dispatch({ type: "REMOVE", lineKey }),
+        setQty: (lineKey, qty) => dispatch({ type: "SET_QTY", lineKey, qty }),
         clearCart: () => dispatch({ type: "CLEAR" }),
         syncCart,
         syncNotice,

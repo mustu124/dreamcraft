@@ -245,6 +245,7 @@ export type InvoiceData = {
   items: {
     name:         string;
     variantLabel: string;
+    colorLabel?:  string;
     qty:          number;
     unitPrice:    number;
   }[];
@@ -331,7 +332,9 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
               <Text style={S.cell}>{item.name}</Text>
             </View>
             <View style={S.colVariant}>
-              <Text style={S.cell}>{item.variantLabel}</Text>
+              <Text style={S.cell}>
+                {item.variantLabel}{item.colorLabel ? ` · ${item.colorLabel}` : ""}
+              </Text>
             </View>
             <View style={S.colQty}>
               <Text style={S.cellCenter}>{item.qty}</Text>

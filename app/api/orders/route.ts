@@ -5,11 +5,12 @@ import { calcShipping, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 // ── Request body shape ────────────────────────────────────────────────────────
 
 type OrderItem = {
-  variantId: string;
-  productId: string;
-  sku:       string;
-  name:      string;
-  qty:       number;
+  variantId:  string;
+  productId:  string;
+  sku:        string;
+  name:       string;
+  colorLabel?: string;
+  qty:        number;
 };
 
 type ShippingAddress = {
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       variant_id:    string;
       product_name:  string;
       variant_label: string;
+      color_label:   string | null;
       unit_price:    number;
       quantity:      number;
     }[] = [];
@@ -112,6 +114,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         variant_id:    v.id,
         product_name:  String(item.name ?? ""),
         variant_label: v.label,
+        color_label:   typeof item.colorLabel === "string" && item.colorLabel.trim() ? item.colorLabel.trim() : null,
         unit_price:    v.price,
         quantity:      qty,
       });
@@ -171,6 +174,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (itemsErr) {
       console.error("order_items insert error:", itemsErr);
+      // The order row exists but has no items recorded — that's a broken
+      // order an admin could easily miss during manual payment verification.
+      // Roll it back rather than returning success for an incomplete order.
+      await supabase.from("orders").delete().eq("id", order.id);
+      return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }
 
     return NextResponse.json(

@@ -5,6 +5,7 @@ export const WHATSAPP_NUMBER = "919008448040";
 export type WhatsAppOrderItem = {
   name: string;
   variantLabel: string;
+  colorLabel?: string;
   qty: number;
   price: number;
 };
@@ -43,7 +44,7 @@ export function buildOrderWhatsAppLink(order: WhatsAppOrderDetails): string {
     "",
     "Items:",
     ...order.items.map(
-      (i) => `- ${i.name} (${i.variantLabel}) x${i.qty} — ${rupee(i.price * i.qty)}`,
+      (i) => `- ${i.name} (${i.variantLabel}${i.colorLabel ? `, ${i.colorLabel}` : ""}) x${i.qty} — ${rupee(i.price * i.qty)}`,
     ),
     "",
     `Subtotal: ${rupee(order.subtotal)}`,

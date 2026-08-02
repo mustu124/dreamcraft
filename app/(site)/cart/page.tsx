@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { calcShipping, rupee } from "@/lib/config/shipping";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
@@ -69,10 +69,10 @@ export default function CartPage() {
             <div>
               {items.map((item) => (
                 <CartLineItem
-                  key={item.variantId}
+                  key={cartLineKey(item)}
                   item={item}
-                  onQtyChange={(qty) => setQty(item.variantId, qty)}
-                  onRemove={() => removeItem(item.variantId)}
+                  onQtyChange={(qty) => setQty(cartLineKey(item), qty)}
+                  onRemove={() => removeItem(cartLineKey(item))}
                 />
               ))}
             </div>
@@ -154,7 +154,10 @@ function CartLineItem({
         >
           {item.name}
         </Link>
-        <p className="font-body text-xs text-navy/45">{item.variantLabel}</p>
+        <p className="font-body text-xs text-navy/45">
+          {item.variantLabel}
+          {item.colorLabel && ` · ${item.colorLabel}`}
+        </p>
         <p className="font-body text-xs text-navy/50">{rupee(item.price)} each</p>
 
         {/* Bottom row: qty stepper + total + remove */}
@@ -200,7 +203,7 @@ function OrderSummary({
       {/* Compact item list */}
       <div className="mb-4 space-y-2 border-b border-navy/8 pb-4">
         {items.map((item) => (
-          <div key={item.variantId} className="flex justify-between gap-2 font-body text-sm text-navy/65">
+          <div key={cartLineKey(item)} className="flex justify-between gap-2 font-body text-sm text-navy/65">
             <span className="min-w-0 truncate">
               {item.name}
               {item.qty > 1 && <span className="text-navy/40"> ×{item.qty}</span>}

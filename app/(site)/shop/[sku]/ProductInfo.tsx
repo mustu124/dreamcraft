@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
 import { PRICE_UNIT_LABELS } from "@/lib/config/priceUnitLabels";
+import {
+  DARK_SHADES,
+  PASTEL_SHADES,
+  COLOR_GROUP_LABELS,
+  COLOR_PICKER_EXCLUDED_CATEGORY_SLUG,
+  type ColorGroup,
+} from "@/lib/config/colorOptions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Exported so page.tsx can build this shape server-side.
@@ -46,8 +53,30 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   const router           = useRouter();
   const [variantIdx, setVariantIdx] = useState(0);
   const [qty, setQty]               = useState(1);
+  const [colorGroup, setColorGroup] = useState<ColorGroup | null>(null);
+  const [colorShade, setColorShade] = useState<string | null>(null);
 
   const variant = product.variants[variantIdx];
+
+  // Every product except Customization (which is fully bespoke via
+  // Contact/WhatsApp already) offers this color/finish preference. It's a
+  // note for the artisan, not a real priced variant — no price/stock change.
+  const requiresColor = product.categorySlug !== COLOR_PICKER_EXCLUDED_CATEGORY_SLUG;
+
+  const colorLabel =
+    colorGroup === "dark" && colorShade ? `${colorShade} (Dark)` :
+    colorGroup === "pastel" && colorShade ? `${colorShade} (Pastel)` :
+    colorGroup === "blocked" ? "Blocked (Solid Color)" :
+    colorGroup === "marble" ? "Marble Finish" :
+    null;
+
+  const colorSatisfied = !requiresColor || !!colorLabel;
+  const canSubmit = !!variant && colorSatisfied;
+
+  function selectColorGroup(g: ColorGroup) {
+    setColorGroup(g);
+    setColorShade(null);
+  }
 
   // Each addItem increments by 1; calling qty times gives the user-selected count.
   // React 18 applies reducer dispatches sequentially even when batched for rendering.
@@ -60,17 +89,18 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       variantLabel: variant!.label,
       price:        variant!.price,
       image:        product.images[0] ?? "",
+      ...(colorLabel ? { colorLabel } : {}),
     };
   }
 
   function handleAddToCart() {
-    if (!variant) return;
+    if (!canSubmit) return;
     const base = buildCartBase();
     for (let i = 0; i < qty; i++) addItem(base);
   }
 
   function handleBuyNow() {
-    if (!variant) return;
+    if (!canSubmit) return;
     const base = buildCartBase();
     for (let i = 0; i < qty; i++) addItem(base);
     router.push("/checkout");
@@ -178,6 +208,61 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
         </div>
       )}
 
+      {/* ── Color selector ──────────────────────────────────────── */}
+      {requiresColor && (
+        <div>
+          <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
+            Color *
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => selectColorGroup(g)}
+                aria-pressed={colorGroup === g}
+                className={[
+                  "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                  colorGroup === g
+                    ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                    : "border-navy/18 text-navy/65 hover:border-navy/45",
+                ].join(" ")}
+              >
+                {COLOR_GROUP_LABELS[g]}
+              </button>
+            ))}
+          </div>
+
+          {(colorGroup === "dark" || colorGroup === "pastel") && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
+                <button
+                  key={shade.name}
+                  type="button"
+                  onClick={() => setColorShade(shade.name)}
+                  aria-pressed={colorShade === shade.name}
+                  aria-label={shade.name}
+                  title={shade.name}
+                  className={[
+                    "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
+                    colorShade === shade.name
+                      ? "ring-2 ring-terracotta ring-offset-2 scale-110"
+                      : "hover:scale-105",
+                  ].join(" ")}
+                  style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
+                />
+              ))}
+            </div>
+          )}
+
+          {colorLabel && (
+            <p className="mt-2.5 font-body text-xs text-navy/50">
+              Selected: {colorLabel}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Quantity + actions ────────────────────────────────── */}
       <div className="flex flex-col gap-3">
 
@@ -198,7 +283,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
         {/* Add to Cart — primary */}
         <button
           type="button"
-          disabled={!variant}
+          disabled={!canSubmit}
           onClick={handleAddToCart}
           className="w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:opacity-40"
         >
@@ -208,7 +293,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
         {/* Buy Now — secondary */}
         <button
           type="button"
-          disabled={!variant}
+          disabled={!canSubmit}
           onClick={handleBuyNow}
           className="w-full rounded-full border-2 border-navy py-3.5 font-body text-sm font-medium text-navy transition-all duration-200 hover:bg-navy hover:text-ivory disabled:opacity-40"
         >

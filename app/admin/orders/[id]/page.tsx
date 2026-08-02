@@ -79,6 +79,7 @@ export default async function OrderDetailPage({ params }: Props) {
     id: string;
     product_name: string;
     variant_label: string;
+    color_label: string | null;
     unit_price: number;
     quantity: number;
   };
@@ -162,6 +163,11 @@ export default async function OrderDetailPage({ params }: Props) {
                 <p className="text-sm font-medium text-gray-900">{item.product_name}</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <span className="text-xs text-gray-500">{item.variant_label}</span>
+                  {item.color_label && (
+                    <span className="rounded bg-terracotta/10 px-1.5 py-0.5 text-[11px] font-medium text-terracotta">
+                      {item.color_label}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-6 text-right">

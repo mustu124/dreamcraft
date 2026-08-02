@@ -24,6 +24,7 @@ type OrderRecord = {
 type OrderItemRecord = {
   product_name:  string;
   variant_label: string;
+  color_label:   string | null;
   quantity:      number;
   unit_price:    number;
 };
@@ -54,7 +55,7 @@ export async function generateAndStoreInvoice(orderId: string): Promise<void> {
       .single<OrderRecord>(),
     supabase
       .from("order_items")
-      .select("product_name, variant_label, quantity, unit_price")
+      .select("product_name, variant_label, color_label, quantity, unit_price")
       .eq("order_id", orderId)
       .returns<OrderItemRecord[]>(),
   ]);
@@ -97,6 +98,7 @@ export async function generateAndStoreInvoice(orderId: string): Promise<void> {
     items: items.map((it) => ({
       name:         it.product_name,
       variantLabel: it.variant_label,
+      colorLabel:   it.color_label ?? undefined,
       qty:          it.quantity,
       unitPrice:    it.unit_price,
     })),
