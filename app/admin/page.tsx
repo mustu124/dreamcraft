@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rupee } from "@/lib/config/shipping";
 import type { ReactNode } from "react";
 
@@ -15,7 +15,10 @@ type RecentOrder = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function AdminDashboardPage() {
-  const supabase = createClient();
+  // Service-role query — orders has no public/authenticated read policy
+  // (same reason app/admin/orders/page.tsx uses this client), so the
+  // regular cookie-based client silently saw zero rows for every stat here.
+  const supabase = createAdminClient();
 
   // Parallel fetch: counts + revenue + recent orders
   const [
