@@ -1,8 +1,10 @@
-// Color/finish preference required on every product page. This is a customer
-// preference for the artisan — it never affects price or stock, so it
-// deliberately isn't modeled as a real product_variant. The choice is
-// carried on the cart item as a plain label and passed through to the order
-// as its own field (order_items.color_label).
+// Color/finish preference required on every product page except
+// Customization (fully bespoke there via Contact/WhatsApp already — that
+// category never shows this picker at all). This is a customer preference
+// for the artisan — it never affects price or stock, so it deliberately
+// isn't modeled as a real product_variant. The choice is carried on the
+// cart item as a plain label and passed through to the order as its own
+// field (order_items.color_label).
 //
 // Flow: pick a shade group (Dark or Pastel) -> pick a specific shade in that
 // group -> pick a finish (Blocked = solid color, or Marble = marbled
@@ -53,3 +55,7 @@ export const COLOR_FINISH_LABELS: Record<ColorFinish, string> = {
   blocked: "Blocked",
   marble:  "Marble",
 };
+
+// Products in this category get to fully customize color/finish themselves
+// via the Contact/WhatsApp flow, so the generic picker doesn't apply.
+export const COLOR_PICKER_EXCLUDED_CATEGORY_SLUG = "customization";

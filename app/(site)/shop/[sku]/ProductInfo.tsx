@@ -10,6 +10,7 @@ import {
   PASTEL_SHADES,
   COLOR_GROUP_LABELS,
   COLOR_FINISH_LABELS,
+  COLOR_PICKER_EXCLUDED_CATEGORY_SLUG,
   type ColorGroup,
   type ColorFinish,
 } from "@/lib/config/colorOptions";
@@ -60,16 +61,20 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
 
   const variant = product.variants[variantIdx];
 
-  // Every product requires this color/finish preference — a note for the
+  // Every product except Customization (fully bespoke via Contact/WhatsApp
+  // already) requires this color/finish preference — a note for the
   // artisan, not a real priced variant, so it never changes price/stock.
   // Flow: shade group -> specific shade -> finish (Blocked or Marble), all
   // three required before the product can be added to the cart.
+  const requiresColor = product.categorySlug !== COLOR_PICKER_EXCLUDED_CATEGORY_SLUG;
+
   const colorLabel =
     colorGroup && colorShade && colorFinish
       ? `${colorShade} (${COLOR_GROUP_LABELS[colorGroup]}, ${COLOR_FINISH_LABELS[colorFinish]})`
       : null;
 
-  const canSubmit = !!variant && !!colorLabel;
+  const colorSatisfied = !requiresColor || !!colorLabel;
+  const canSubmit = !!variant && colorSatisfied;
 
   function selectColorGroup(g: ColorGroup) {
     setColorGroup(g);
@@ -213,83 +218,85 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       )}
 
       {/* ── Color selector ──────────────────────────────────────── */}
-      <div>
-        <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
-          Color *
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => selectColorGroup(g)}
-              aria-pressed={colorGroup === g}
-              className={[
-                "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-                colorGroup === g
-                  ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
-                  : "border-navy/18 text-navy/65 hover:border-navy/45",
-              ].join(" ")}
-            >
-              {COLOR_GROUP_LABELS[g]}
-            </button>
-          ))}
-        </div>
-
-        {colorGroup && (
-          <div className="mt-3 flex flex-wrap gap-3">
-            {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
+      {requiresColor && (
+        <div>
+          <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
+            Color *
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
               <button
-                key={shade.name}
+                key={g}
                 type="button"
-                onClick={() => selectColorShade(shade.name)}
-                aria-pressed={colorShade === shade.name}
-                aria-label={shade.name}
-                title={shade.name}
+                onClick={() => selectColorGroup(g)}
+                aria-pressed={colorGroup === g}
                 className={[
-                  "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
-                  colorShade === shade.name
-                    ? "ring-2 ring-terracotta ring-offset-2 scale-110"
-                    : "hover:scale-105",
+                  "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                  colorGroup === g
+                    ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                    : "border-navy/18 text-navy/65 hover:border-navy/45",
                 ].join(" ")}
-                style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
-              />
+              >
+                {COLOR_GROUP_LABELS[g]}
+              </button>
             ))}
           </div>
-        )}
 
-        {colorShade && (
-          <div className="mt-3">
-            <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
-              Finish *
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
+          {colorGroup && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
                 <button
-                  key={f}
+                  key={shade.name}
                   type="button"
-                  onClick={() => setColorFinish(f)}
-                  aria-pressed={colorFinish === f}
+                  onClick={() => selectColorShade(shade.name)}
+                  aria-pressed={colorShade === shade.name}
+                  aria-label={shade.name}
+                  title={shade.name}
                   className={[
-                    "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-                    colorFinish === f
-                      ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
-                      : "border-navy/18 text-navy/65 hover:border-navy/45",
+                    "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
+                    colorShade === shade.name
+                      ? "ring-2 ring-terracotta ring-offset-2 scale-110"
+                      : "hover:scale-105",
                   ].join(" ")}
-                >
-                  {COLOR_FINISH_LABELS[f]}
-                </button>
+                  style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
+                />
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {colorLabel && (
-          <p className="mt-2.5 font-body text-xs text-navy/50">
-            Selected: {colorLabel}
-          </p>
-        )}
-      </div>
+          {colorShade && (
+            <div className="mt-3">
+              <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
+                Finish *
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setColorFinish(f)}
+                    aria-pressed={colorFinish === f}
+                    className={[
+                      "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                      colorFinish === f
+                        ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                        : "border-navy/18 text-navy/65 hover:border-navy/45",
+                    ].join(" ")}
+                  >
+                    {COLOR_FINISH_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {colorLabel && (
+            <p className="mt-2.5 font-body text-xs text-navy/50">
+              Selected: {colorLabel}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Quantity + actions ────────────────────────────────── */}
       <div className="flex flex-col gap-3">
