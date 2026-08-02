@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
-import { calcShipping, rupee } from "@/lib/config/shipping";
+import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
   if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
@@ -16,16 +16,17 @@ function formatSyncNotice(notice: CartSyncResult | null): string | null {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CartPage() {
-  const { items, totalPrice, setQty, removeItem, syncNotice, clearSyncNotice } = useCart();
+  const { items, totalPrice, setQty, removeItem, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
 
   // The provider re-resolves the cart against the live catalogue right after
   // hydrating it — surface the result here until the customer dismisses it.
   const cartNotice = formatSyncNotice(syncNotice);
 
-  const subtotal = totalPrice;
-  const shipping = calcShipping(subtotal);
-  const total    = subtotal + shipping;
-  const isEmpty  = items.length === 0;
+  const subtotal    = totalPrice;
+  const shipping    = calcShipping(subtotal);
+  const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
+  const total       = subtotal + shipping + giftWrapFee;
+  const isEmpty     = items.length === 0;
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -83,6 +84,9 @@ export default function CartPage() {
                 items={items}
                 subtotal={subtotal}
                 shipping={shipping}
+                giftWrap={giftWrap}
+                onGiftWrapChange={setGiftWrap}
+                giftWrapFee={giftWrapFee}
                 total={total}
               />
             </div>
@@ -189,11 +193,17 @@ function OrderSummary({
   items,
   subtotal,
   shipping,
+  giftWrap,
+  onGiftWrapChange,
+  giftWrapFee,
   total,
 }: {
   items: CartItem[];
   subtotal: number;
   shipping: number;
+  giftWrap: boolean;
+  onGiftWrapChange: (value: boolean) => void;
+  giftWrapFee: number;
   total: number;
 }) {
   return (
@@ -213,6 +223,20 @@ function OrderSummary({
         ))}
       </div>
 
+      {/* Gift wrapping */}
+      <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-navy/12 bg-blush/10 px-4 py-3 transition-colors hover:border-terracotta/40">
+        <input
+          type="checkbox"
+          checked={giftWrap}
+          onChange={(e) => onGiftWrapChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 flex-shrink-0 accent-terracotta"
+        />
+        <span className="font-body text-sm text-navy/75">
+          Add individual gift box packing
+          <span className="ml-1.5 text-navy/45">(+{rupee(GIFT_WRAP_FEE_INR)})</span>
+        </span>
+      </label>
+
       {/* Subtotal + shipping */}
       <div className="space-y-2.5">
         <SummaryRow label="Subtotal" value={rupee(subtotal)} />
@@ -221,6 +245,9 @@ function OrderSummary({
           value={shipping === 0 ? "Free" : rupee(shipping)}
           valueClass={shipping === 0 ? "text-green-600" : undefined}
         />
+        {giftWrapFee > 0 && (
+          <SummaryRow label="Gift box packing" value={rupee(giftWrapFee)} />
+        )}
       </div>
 
       {/* Total */}

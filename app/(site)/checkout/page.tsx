@@ -81,7 +81,7 @@ function validate(d: FormData): FormErrors {
 
 export default function CheckoutPage() {
   const router           = useRouter();
-  const { items, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice } = useCart();
+  const { items, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
 
   const subtotal = totalPrice;
   const shipping = calcShipping(subtotal);
@@ -89,7 +89,6 @@ export default function CheckoutPage() {
   // ── Form state ─────────────────────────────────────────────
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [errors,   setErrors]   = useState<FormErrors>({});
-  const [giftWrap, setGiftWrap] = useState(false);
 
   const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
   const total       = subtotal + shipping + giftWrapFee;

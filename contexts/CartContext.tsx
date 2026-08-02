@@ -83,6 +83,10 @@ type CartCtx = {
   setQty: (lineKey: string, qty: number) => void;
   clearCart: () => void;
   syncCart: () => Promise<CartSyncResult>;
+  // Lives here (not local component state) so it's picked on the Cart page
+  // and still set once the customer reaches Checkout, instead of resetting.
+  giftWrap: boolean;
+  setGiftWrap: (value: boolean) => void;
   // Set once, right after the cart is hydrated from localStorage, if that
   // hydration healed anything (see resolveSync below). Pages read this once
   // on mount to show a notice, then clear it so it doesn't linger.
@@ -93,6 +97,7 @@ type CartCtx = {
 const CartContext = createContext<CartCtx | null>(null);
 
 const STORAGE_KEY = "dc_cart";
+const GIFT_WRAP_STORAGE_KEY = "dc_gift_wrap";
 
 // Re-resolves a given set of cart lines against the live catalogue (see
 // /api/cart/sync) and computes remap/drop updates for any variantId that's
@@ -148,6 +153,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const itemsRef = React.useRef(items);
   itemsRef.current = items;
   const [syncNotice, setSyncNotice] = useState<CartSyncResult | null>(null);
+  const [giftWrap, setGiftWrapState] = useState(false);
+  const skipNextGiftWrapPersist = useRef(true);
 
   // Both effects below fire on mount in the same pass, in declaration order.
   // The hydrate effect *dispatches* the loaded cart, but that update isn't
@@ -194,6 +201,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
+  // Gift-wrap preference — same hydrate-then-persist shape as the cart
+  // itself, independent of it, so it survives Cart -> Checkout navigation.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(GIFT_WRAP_STORAGE_KEY) === "true") setGiftWrapState(true);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (skipNextGiftWrapPersist.current) {
+      skipNextGiftWrapPersist.current = false;
+      return;
+    }
+    localStorage.setItem(GIFT_WRAP_STORAGE_KEY, String(giftWrap));
+  }, [giftWrap]);
+
   const totalItems = items.reduce((s, i) => s + i.qty, 0);
   const totalPrice = items.reduce((s, i) => s + i.price * i.qty, 0);
 
@@ -215,10 +238,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addItem: (item) => dispatch({ type: "ADD", item }),
         removeItem: (lineKey) => dispatch({ type: "REMOVE", lineKey }),
         setQty: (lineKey, qty) => dispatch({ type: "SET_QTY", lineKey, qty }),
-        clearCart: () => dispatch({ type: "CLEAR" }),
+        clearCart: () => { dispatch({ type: "CLEAR" }); setGiftWrapState(false); },
         syncCart,
         syncNotice,
         clearSyncNotice: () => setSyncNotice(null),
+        giftWrap,
+        setGiftWrap: setGiftWrapState,
       }}
     >
       {children}
