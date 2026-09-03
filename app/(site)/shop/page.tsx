@@ -44,9 +44,9 @@ export default async function ShopPage({
   // Normalise searchParams values (Next can return string | string[] | undefined)
   const catSlug  = typeof searchParams.category    === "string" ? searchParams.category    : undefined;
   const subSlug  = typeof searchParams.subcategory === "string" ? searchParams.subcategory : undefined;
-  const sortRaw  = typeof searchParams.sort        === "string" ? searchParams.sort        : "newest";
+  const sortRaw  = typeof searchParams.sort        === "string" ? searchParams.sort        : "featured";
   const pageNum  = Math.max(1, Number(searchParams.page) || 1);
-  const sort     = (["newest", "price_asc", "price_high"].includes(sortRaw) ? sortRaw : "newest") as SortKey;
+  const sort     = (["featured", "newest", "price_asc", "price_high"].includes(sortRaw) ? sortRaw : "featured") as SortKey;
 
   // ── Fetch categories (for filter bar + ID lookup) ──────────────
   const { data: catData } = await supabase
@@ -89,8 +89,23 @@ export default async function ShopPage({
     return prices.length ? Math.min(...prices) : Infinity;
   }
 
+  // Deterministic pseudo-random key from a product id (FNV-1a hash).
+  // "Featured" order sorts by this so the grid shows a stable price-mixed
+  // shuffle instead of clustering the pricey Signature Styling sets — which
+  // were seeded last — at the very top under a plain "newest" sort.
+  function shuffleKey(id: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) {
+      h ^= id.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
   const sorted = [...raw].sort((a, b) => {
     switch (sort) {
+      case "featured":
+        return shuffleKey(a.id) - shuffleKey(b.id);
       case "price_asc":
         return minPrice(a) !== minPrice(b)
           ? minPrice(a) - minPrice(b)
@@ -147,7 +162,7 @@ export default async function ShopPage({
     const params = new URLSearchParams();
     if (catSlug)                params.set("category",    catSlug);
     if (subSlug)                params.set("subcategory", subSlug);
-    if (sort !== "newest")      params.set("sort",        sort);
+    if (sort !== "featured")    params.set("sort",        sort);
     if (p > 1)                  params.set("page",        String(p));
     const qs = params.toString();
     return qs ? `/shop?${qs}` : "/shop";

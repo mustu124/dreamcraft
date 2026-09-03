@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 type Subcat = { id: string; name: string; slug: string };
 export type FilterCategory = { id: string; name: string; slug: string; subcategories: Subcat[] };
 
-export type SortKey = "newest" | "price_asc" | "price_high";
+export type SortKey = "featured" | "newest" | "price_asc" | "price_high";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ export default function ShopFilters({
 
     if (cat)                         params.set("category",    cat);
     if (sub)                         params.set("subcategory", sub);
-    if (sort && sort !== "newest")   params.set("sort",        sort);
+    if (sort && sort !== "featured") params.set("sort",        sort);
     // "page" intentionally omitted — filter change resets to page 1
 
     const qs = params.toString();
@@ -95,6 +95,7 @@ export default function ShopFilters({
           aria-label="Sort products"
           className="flex-shrink-0 rounded-lg border border-navy/20 bg-ivory px-3 py-2 font-body text-sm text-navy focus:border-terracotta focus:outline-none"
         >
+          <option value="featured">Featured</option>
           <option value="newest">Newest</option>
           <option value="price_asc">Price ↑</option>
           <option value="price_high">Price ↓</option>

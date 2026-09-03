@@ -9,12 +9,11 @@ import MobileMenu from "./MobileMenu";
 import type { NavLink } from "./MobileMenu";
 
 const NAV: NavLink[] = [
-  { label: "Home",           href: "/" },
-  { label: "Shop",           href: "/shop" },
-  { label: "Founder's Story",href: "/founder" },
-  { label: "About",          href: "/about" },
-  { label: "Gallery",        href: "/gallery" },
-  { label: "Contact",        href: "/contact" },
+  { label: "Home",    href: "/" },
+  { label: "About",   href: "/about" },
+  { label: "Shop",    href: "/shop" },
+  { label: "Gallery", href: "/gallery" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export default function Header() {

@@ -14,6 +14,11 @@ const nextConfig = {
   },
 
   images: {
+    // Serve images as-is instead of through Vercel's image optimizer.
+    // The optimizer's monthly transformation quota was being exhausted,
+    // after which it returns 402s and images render broken across the site.
+    // Supabase Storage already serves these files from its own CDN.
+    unoptimized: true,
     remotePatterns: [
       ...(supabaseHostname
         ? [

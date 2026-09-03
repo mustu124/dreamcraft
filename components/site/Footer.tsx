@@ -5,7 +5,6 @@ import NewsletterSignup from "./NewsletterSignup";
 type Category = { name: string; slug: string };
 
 const COMPANY_LINKS = [
-  { label: "Founder's Story", href: "/founder" },
   { label: "About",           href: "/about" },
   { label: "Contact",         href: "/contact" },
 ];
