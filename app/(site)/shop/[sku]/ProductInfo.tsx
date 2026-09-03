@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
 import { PRICE_UNIT_LABELS } from "@/lib/config/priceUnitLabels";
+import {
+  VARIANT_AXIS_LABELS,
+  MULTI_COLOR_SLOTS,
+  CHOICE_AXES,
+} from "@/lib/config/productOptions";
 import {
   DARK_SHADES,
   PASTEL_SHADES,
@@ -33,6 +38,16 @@ export type ProductInfoData = {
   showPlantsNote: boolean;
 };
 
+// One colour/finish selection. A product normally has a single one of these;
+// certain "set" variants have one per bundled piece (see MULTI_COLOR_SLOTS).
+type ShadeSel = { group: ColorGroup | null; shade: string | null; finish: ColorFinish | null };
+const emptyShade = (): ShadeSel => ({ group: null, shade: null, finish: null });
+
+function formatShade(s: ShadeSel): string | null {
+  if (!s.group || !s.shade || !s.finish) return null;
+  return `${s.shade} (${COLOR_GROUP_LABELS[s.group]}, ${COLOR_FINISH_LABELS[s.finish]})`;
+}
+
 // ── Description formatting ────────────────────────────────────────────────────
 // Breaks the description onto a new line right before "Size:"/"Sizes:" (with
 // or without an "Available" prefix), so the dimensions read as their own line
@@ -55,37 +70,76 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   const router           = useRouter();
   const [variantIdx, setVariantIdx] = useState(0);
   const [qty, setQty]               = useState(1);
-  const [colorGroup, setColorGroup]   = useState<ColorGroup | null>(null);
-  const [colorShade, setColorShade]   = useState<string | null>(null);
-  const [colorFinish, setColorFinish] = useState<ColorFinish | null>(null);
 
   const variant = product.variants[variantIdx];
 
   // Every product except Customization (fully bespoke via Contact/WhatsApp
-  // already) requires this color/finish preference — a note for the
-  // artisan, not a real priced variant, so it never changes price/stock.
-  // Flow: shade group -> specific shade -> finish (Blocked or Marble), all
-  // three required before the product can be added to the cart.
+  // already) requires a colour/finish preference — a note for the artisan, not
+  // a real priced variant, so it never changes price/stock.
   const requiresColor = product.categorySlug !== COLOR_PICKER_EXCLUDED_CATEGORY_SLUG;
 
-  const colorLabel =
-    colorGroup && colorShade && colorFinish
-      ? `${colorShade} (${COLOR_GROUP_LABELS[colorGroup]}, ${COLOR_FINISH_LABELS[colorFinish]})`
-      : null;
+  const variantAxisLabel = VARIANT_AXIS_LABELS[product.sku] ?? "Size";
 
-  const colorSatisfied = !requiresColor || !!colorLabel;
-  const canSubmit = !!variant && colorSatisfied;
+  // Colour slots for the *current* variant. `[""]` = one shared, unnamed
+  // picker (the common case); named slots (e.g. "Style 1"/"Style 2"/"Style 3")
+  // show one full picker each.
+  const colorSlots = useMemo<string[]>(() => {
+    if (!requiresColor) return [];
+    return MULTI_COLOR_SLOTS[product.sku]?.[variant?.label ?? ""] ?? [""];
+  }, [requiresColor, product.sku, variant?.label]);
 
-  function selectColorGroup(g: ColorGroup) {
-    setColorGroup(g);
-    setColorShade(null);
-    setColorFinish(null);
+  // Extra required "pick one" axes (e.g. coaster Shape) — not priced, not colour.
+  const choiceAxes = CHOICE_AXES[product.sku] ?? [];
+
+  const [shades, setShades]   = useState<ShadeSel[]>([emptyShade()]);
+  const [axisSel, setAxisSel] = useState<(string | null)[]>(() => choiceAxes.map(() => null));
+
+  // Re-size the shade array whenever the slot count changes (variant switch).
+  useEffect(() => {
+    setShades((prev) => {
+      const next = colorSlots.map((_, i) => prev[i] ?? emptyShade());
+      return next.length ? next : [emptyShade()];
+    });
+  }, [colorSlots]);
+
+  function patchShade(idx: number, patch: Partial<ShadeSel>) {
+    setShades((prev) =>
+      prev.map((s, i) => {
+        if (i !== idx) return s;
+        const merged = { ...s, ...patch };
+        // Selecting a group clears the shade+finish below it; a shade clears finish.
+        if ("group" in patch)  { merged.shade = null; merged.finish = null; }
+        if ("shade" in patch)  { merged.finish = null; }
+        return merged;
+      }),
+    );
   }
 
-  function selectColorShade(shade: string) {
-    setColorShade(shade);
-    setColorFinish(null);
+  // ── Derived: is the selection complete, and what's the artisan note? ───────
+  const activeShades = shades.slice(0, Math.max(1, colorSlots.length));
+
+  const shadesDone =
+    !requiresColor || activeShades.every((s) => s.group && s.shade && s.finish);
+  const axesDone = choiceAxes.every((_, i) => !!axisSel[i]);
+
+  const noteSegments: string[] = [];
+  choiceAxes.forEach((ax, i) => {
+    if (axisSel[i]) noteSegments.push(`${ax.name}: ${axisSel[i]}`);
+  });
+  if (requiresColor && shadesDone) {
+    if (colorSlots.length <= 1 && colorSlots[0] === "") {
+      const f = formatShade(activeShades[0]);
+      if (f) noteSegments.push(f);
+    } else {
+      colorSlots.forEach((name, i) => {
+        const f = formatShade(activeShades[i]);
+        if (f) noteSegments.push(`${name}: ${f}`);
+      });
+    }
   }
+  const colorLabel = noteSegments.length ? noteSegments.join("; ") : null;
+
+  const canSubmit = !!variant && shadesDone && axesDone;
 
   // Each addItem increments by 1; calling qty times gives the user-selected count.
   // React 18 applies reducer dispatches sequentially even when batched for rendering.
@@ -194,7 +248,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       {product.variants.length > 1 && (
         <div>
           <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
-            Size
+            {variantAxisLabel}
           </p>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v, i) => (
@@ -217,84 +271,46 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
         </div>
       )}
 
-      {/* ── Color selector ──────────────────────────────────────── */}
-      {requiresColor && (
-        <div>
+      {/* ── Extra choice axes (e.g. Shape) ─────────────────────── */}
+      {choiceAxes.map((ax, i) => (
+        <div key={ax.name}>
           <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
-            Color *
+            {ax.name} *
           </p>
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+            {ax.options.map((opt) => (
               <button
-                key={g}
+                key={opt}
                 type="button"
-                onClick={() => selectColorGroup(g)}
-                aria-pressed={colorGroup === g}
+                onClick={() =>
+                  setAxisSel((prev) => prev.map((v, n) => (n === i ? opt : v)))
+                }
+                aria-pressed={axisSel[i] === opt}
                 className={[
                   "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-                  colorGroup === g
+                  axisSel[i] === opt
                     ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
                     : "border-navy/18 text-navy/65 hover:border-navy/45",
                 ].join(" ")}
               >
-                {COLOR_GROUP_LABELS[g]}
+                {opt}
               </button>
             ))}
           </div>
+        </div>
+      ))}
 
-          {colorGroup && (
-            <div className="mt-3 flex flex-wrap gap-3">
-              {(colorGroup === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
-                <button
-                  key={shade.name}
-                  type="button"
-                  onClick={() => selectColorShade(shade.name)}
-                  aria-pressed={colorShade === shade.name}
-                  aria-label={shade.name}
-                  title={shade.name}
-                  className={[
-                    "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
-                    colorShade === shade.name
-                      ? "ring-2 ring-terracotta ring-offset-2 scale-110"
-                      : "hover:scale-105",
-                  ].join(" ")}
-                  style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
-                />
-              ))}
-            </div>
-          )}
-
-          {colorShade && (
-            <div className="mt-3">
-              <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
-                Finish *
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setColorFinish(f)}
-                    aria-pressed={colorFinish === f}
-                    className={[
-                      "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-                      colorFinish === f
-                        ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
-                        : "border-navy/18 text-navy/65 hover:border-navy/45",
-                    ].join(" ")}
-                  >
-                    {COLOR_FINISH_LABELS[f]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {colorLabel && (
-            <p className="mt-2.5 font-body text-xs text-navy/50">
-              Selected: {colorLabel}
-            </p>
-          )}
+      {/* ── Colour selector(s) ─────────────────────────────────── */}
+      {requiresColor && (
+        <div className="flex flex-col gap-5">
+          {colorSlots.map((slotName, i) => (
+            <ShadePicker
+              key={slotName || "color"}
+              heading={slotName ? `Color — ${slotName} *` : "Color *"}
+              value={activeShades[i] ?? emptyShade()}
+              onChange={(patch) => patchShade(i, patch)}
+            />
+          ))}
         </div>
       )}
 
@@ -364,6 +380,102 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
         />
         <TrustItem icon={<LockIcon />} label="Secure payments via UPI QR code" />
       </div>
+    </div>
+  );
+}
+
+// ── Shade picker ──────────────────────────────────────────────────────────────
+// One colour group -> shade -> finish flow. Rendered once for a normal
+// product, and once per bundled piece for multi-colour "set" variants.
+
+function ShadePicker({
+  heading,
+  value,
+  onChange,
+}: {
+  heading: string;
+  value: ShadeSel;
+  onChange: (patch: Partial<ShadeSel>) => void;
+}) {
+  const label = formatShade(value);
+
+  return (
+    <div>
+      <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
+        {heading}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => onChange({ group: g })}
+            aria-pressed={value.group === g}
+            className={[
+              "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+              value.group === g
+                ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                : "border-navy/18 text-navy/65 hover:border-navy/45",
+            ].join(" ")}
+          >
+            {COLOR_GROUP_LABELS[g]}
+          </button>
+        ))}
+      </div>
+
+      {value.group && (
+        <div className="mt-3 flex flex-wrap gap-3">
+          {(value.group === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
+            <button
+              key={shade.name}
+              type="button"
+              onClick={() => onChange({ shade: shade.name })}
+              aria-pressed={value.shade === shade.name}
+              aria-label={shade.name}
+              title={shade.name}
+              className={[
+                "h-8 w-8 flex-shrink-0 rounded-full transition-all duration-200",
+                value.shade === shade.name
+                  ? "ring-2 ring-terracotta ring-offset-2 scale-110"
+                  : "hover:scale-105",
+              ].join(" ")}
+              style={{ backgroundColor: shade.hex, boxShadow: "inset 0 0 0 1px rgba(43,58,130,0.15)" }}
+            />
+          ))}
+        </div>
+      )}
+
+      {value.shade && (
+        <div className="mt-3">
+          <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
+            Finish *
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => onChange({ finish: f })}
+                aria-pressed={value.finish === f}
+                className={[
+                  "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                  value.finish === f
+                    ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                    : "border-navy/18 text-navy/65 hover:border-navy/45",
+                ].join(" ")}
+              >
+                {COLOR_FINISH_LABELS[f]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {label && (
+        <p className="mt-2.5 font-body text-xs text-navy/50">
+          Selected: {label}
+        </p>
+      )}
     </div>
   );
 }
