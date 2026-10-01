@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { saveDisabledOptions } from "@/lib/admin/saveDisabledOptions";
 
 async function getUser() {
   const { data: { user } } = await createClient().auth.getUser();
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 // ── POST /api/admin/products ──────────────────────────────────────────────────
 // Body: { name, sku, category_id, subcategory_id?, description?, is_active,
-//         is_bestseller, variants: [{label, price}]+, images: [{url, sort_order}]* }
+//         is_bestseller, disabled_options?, variants: [{label, price}]+, images: [{url, sort_order}]* }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!(await getUser())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   const { name, sku, category_id, subcategory_id, description,
-          is_active, is_bestseller, variants, images } = body;
+          is_active, is_bestseller, disabled_options, variants, images } = body;
 
   if (typeof name !== "string" || !name.trim())
     return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -122,5 +123,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  return NextResponse.json({ id: productId }, { status: 201 });
+  const warning = await saveDisabledOptions(admin, productId, disabled_options);
+
+  return NextResponse.json({ id: productId, ...(warning ? { warning } : {}) }, { status: 201 });
 }

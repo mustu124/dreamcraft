@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { saveDisabledOptions } from "@/lib/admin/saveDisabledOptions";
 
 async function getUser() {
   const { data: { user } } = await createClient().auth.getUser();
@@ -60,7 +61,7 @@ export async function PATCH(
 
   // ── Full edit path ─────────────────────────────────────────────────────────
   const { name, sku, category_id, subcategory_id, description,
-          is_active, is_bestseller, variants, images } = body;
+          is_active, is_bestseller, disabled_options, variants, images } = body;
 
   if (typeof name !== "string" || !name.trim())
     return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -156,7 +157,9 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json({ success: true });
+  const warning = await saveDisabledOptions(admin, params.id, disabled_options);
+
+  return NextResponse.json({ success: true, ...(warning ? { warning } : {}) });
 }
 
 // ── DELETE /api/admin/products/[id] ───────────────────────────────────────────

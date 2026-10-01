@@ -9,13 +9,15 @@ import {
   VARIANT_AXIS_LABELS,
   MULTI_COLOR_SLOTS,
   CHOICE_AXES,
+  OPTION_COLOR,
+  OPTION_FINISH,
+  choiceOptionKey,
 } from "@/lib/config/productOptions";
 import {
   DARK_SHADES,
   PASTEL_SHADES,
   COLOR_GROUP_LABELS,
   COLOR_FINISH_LABELS,
-  COLOR_PICKER_EXCLUDED_CATEGORY_SLUG,
   type ColorGroup,
   type ColorFinish,
 } from "@/lib/config/colorOptions";
@@ -36,6 +38,8 @@ export type ProductInfoData = {
   variants: { id: string; label: string; price: number }[];
   isCandleCategory: boolean;
   showPlantsNote: boolean;
+  // Pickers the admin switched off for this product (see productOptions.ts).
+  disabledOptions: string[];
 };
 
 // One colour/finish selection. A product normally has a single one of these;
@@ -43,9 +47,21 @@ export type ProductInfoData = {
 type ShadeSel = { group: ColorGroup | null; shade: string | null; finish: ColorFinish | null };
 const emptyShade = (): ShadeSel => ({ group: null, shade: null, finish: null });
 
-function formatShade(s: ShadeSel): string | null {
-  if (!s.group || !s.shade || !s.finish) return null;
-  return `${s.shade} (${COLOR_GROUP_LABELS[s.group]}, ${COLOR_FINISH_LABELS[s.finish]})`;
+// Which parts of the colour flow this product asks for — either can be
+// switched off from the admin panel.
+type ShadeParts = { color: boolean; finish: boolean };
+
+function isShadeDone(s: ShadeSel, parts: ShadeParts): boolean {
+  return (!parts.color || (!!s.group && !!s.shade)) && (!parts.finish || !!s.finish);
+}
+
+function formatShade(s: ShadeSel, parts: ShadeParts): string | null {
+  if (!isShadeDone(s, parts)) return null;
+  if (parts.color && parts.finish)
+    return `${s.shade} (${COLOR_GROUP_LABELS[s.group!]}, ${COLOR_FINISH_LABELS[s.finish!]})`;
+  if (parts.color) return `${s.shade} (${COLOR_GROUP_LABELS[s.group!]})`;
+  if (parts.finish) return `${COLOR_FINISH_LABELS[s.finish!]} finish`;
+  return null;
 }
 
 // ── Description formatting ────────────────────────────────────────────────────
@@ -73,10 +89,15 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
 
   const variant = product.variants[variantIdx];
 
-  // Every product except Customization (fully bespoke via Contact/WhatsApp
-  // already) requires a colour/finish preference — a note for the artisan, not
-  // a real priced variant, so it never changes price/stock.
-  const requiresColor = product.categorySlug !== COLOR_PICKER_EXCLUDED_CATEGORY_SLUG;
+  // Colour and finish are required preferences unless switched off for this
+  // product in the admin panel — a note for the artisan, not a real priced
+  // variant, so they never change price/stock.
+  const disabled = new Set(product.disabledOptions);
+  const shadeParts: ShadeParts = {
+    color:  !disabled.has(OPTION_COLOR),
+    finish: !disabled.has(OPTION_FINISH),
+  };
+  const requiresColor = shadeParts.color || shadeParts.finish;
 
   const variantAxisLabel = VARIANT_AXIS_LABELS[product.sku] ?? "Size";
 
@@ -89,7 +110,13 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   }, [requiresColor, product.sku, variant?.label]);
 
   // Extra required "pick one" axes (e.g. coaster Shape) — not priced, not colour.
-  const choiceAxes = CHOICE_AXES[product.sku] ?? [];
+  const choiceAxes = useMemo(
+    () =>
+      (CHOICE_AXES[product.sku] ?? []).filter(
+        (ax) => !product.disabledOptions.includes(choiceOptionKey(ax.name)),
+      ),
+    [product.sku, product.disabledOptions],
+  );
 
   const [shades, setShades]   = useState<ShadeSel[]>([emptyShade()]);
   const [axisSel, setAxisSel] = useState<(string | null)[]>(() => choiceAxes.map(() => null));
@@ -119,7 +146,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   const activeShades = shades.slice(0, Math.max(1, colorSlots.length));
 
   const shadesDone =
-    !requiresColor || activeShades.every((s) => s.group && s.shade && s.finish);
+    !requiresColor || activeShades.every((s) => isShadeDone(s, shadeParts));
   const axesDone = choiceAxes.every((_, i) => !!axisSel[i]);
 
   const noteSegments: string[] = [];
@@ -128,11 +155,11 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
   });
   if (requiresColor && shadesDone) {
     if (colorSlots.length <= 1 && colorSlots[0] === "") {
-      const f = formatShade(activeShades[0]);
+      const f = formatShade(activeShades[0], shadeParts);
       if (f) noteSegments.push(f);
     } else {
       colorSlots.forEach((name, i) => {
-        const f = formatShade(activeShades[i]);
+        const f = formatShade(activeShades[i], shadeParts);
         if (f) noteSegments.push(`${name}: ${f}`);
       });
     }
@@ -306,7 +333,8 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
           {colorSlots.map((slotName, i) => (
             <ShadePicker
               key={slotName || "color"}
-              heading={slotName ? `Color — ${slotName} *` : "Color *"}
+              heading={`${shadeParts.color ? "Color" : "Finish"}${slotName ? ` — ${slotName}` : ""} *`}
+              parts={shadeParts}
               value={activeShades[i] ?? emptyShade()}
               onChange={(patch) => patchShade(i, patch)}
             />
@@ -390,40 +418,46 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
 
 function ShadePicker({
   heading,
+  parts,
   value,
   onChange,
 }: {
   heading: string;
+  parts: ShadeParts;
   value: ShadeSel;
   onChange: (patch: Partial<ShadeSel>) => void;
 }) {
-  const label = formatShade(value);
+  const label = formatShade(value, parts);
+  // With colour switched off, the finish buttons are the whole picker.
+  const showFinish = parts.finish && (!parts.color || !!value.shade);
 
   return (
     <div>
       <p className="mb-2.5 font-body text-[10px] uppercase tracking-widest text-navy/40">
         {heading}
       </p>
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
-          <button
-            key={g}
-            type="button"
-            onClick={() => onChange({ group: g })}
-            aria-pressed={value.group === g}
-            className={[
-              "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
-              value.group === g
-                ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
-                : "border-navy/18 text-navy/65 hover:border-navy/45",
-            ].join(" ")}
-          >
-            {COLOR_GROUP_LABELS[g]}
-          </button>
-        ))}
-      </div>
+      {parts.color && (
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(COLOR_GROUP_LABELS) as ColorGroup[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => onChange({ group: g })}
+              aria-pressed={value.group === g}
+              className={[
+                "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",
+                value.group === g
+                  ? "border-terracotta bg-terracotta/8 text-terracotta shadow-sm"
+                  : "border-navy/18 text-navy/65 hover:border-navy/45",
+              ].join(" ")}
+            >
+              {COLOR_GROUP_LABELS[g]}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {value.group && (
+      {parts.color && value.group && (
         <div className="mt-3 flex flex-wrap gap-3">
           {(value.group === "dark" ? DARK_SHADES : PASTEL_SHADES).map((shade) => (
             <button
@@ -445,11 +479,13 @@ function ShadePicker({
         </div>
       )}
 
-      {value.shade && (
-        <div className="mt-3">
-          <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
-            Finish *
-          </p>
+      {showFinish && (
+        <div className={parts.color ? "mt-3" : ""}>
+          {parts.color && (
+            <p className="mb-2 font-body text-[10px] uppercase tracking-widest text-navy/40">
+              Finish *
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {(Object.keys(COLOR_FINISH_LABELS) as ColorFinish[]).map((f) => (
               <button

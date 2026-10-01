@@ -20,6 +20,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { uploadToStorage } from "@/lib/admin/upload";
+import {
+  CHOICE_AXES,
+  OPTION_COLOR,
+  OPTION_FINISH,
+  choiceOptionKey,
+  defaultDisabledOptions,
+} from "@/lib/config/productOptions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +39,7 @@ export type ProductFormInitialData = {
   description:    string;
   is_active:      boolean;
   is_bestseller:  boolean;
+  disabled_options: string[];
   variants:       { id: string; label: string; price: number }[];
   images:         { id: string; url: string; sort_order: number }[];
 };
@@ -189,6 +197,18 @@ export function ProductForm({
   const [isActive,      setIsActive]      = useState(initialData?.is_active       ?? true);
   const [isBestseller,  setIsBestseller]  = useState(initialData?.is_bestseller  ?? false);
 
+  // ── Product-page pickers (switched-off keys, see productOptions.ts) ───────────
+  const [disabledOptions, setDisabledOptions] = useState<string[]>(
+    initialData?.disabled_options ?? [],
+  );
+  const choiceAxes = CHOICE_AXES[sku.trim().toUpperCase()] ?? [];
+
+  function setOptionEnabled(key: string, enabled: boolean) {
+    setDisabledOptions((prev) =>
+      enabled ? prev.filter((k) => k !== key) : prev.includes(key) ? prev : [...prev, key],
+    );
+  }
+
   // ── Variants ─────────────────────────────────────────────────────────────────
   const [variants, setVariants] = useState<VariantItem[]>(
     initialData?.variants.length
@@ -237,6 +257,12 @@ export function ProductForm({
     setCategoryId(newCatId);
     setSubcategoryId("");
     skuAutoRef.current = true; // allow auto-suggest on category change
+    // New products start from the category's default pickers (e.g.
+    // Customization has colour/finish off); existing ones keep their settings.
+    if (!isEdit) {
+      const slug = categories.find((c) => c.id === newCatId)?.slug ?? "";
+      setDisabledOptions(defaultDisabledOptions(slug));
+    }
   }
 
   // ── Variant handlers ──────────────────────────────────────────────────────────
@@ -324,6 +350,7 @@ export function ProductForm({
       description:    description.trim() || null,
       is_active:      isActive,
       is_bestseller:  isBestseller,
+      disabled_options: disabledOptions,
       variants: validVariants.map((v, i) => ({
         ...(v.id ? { id: v.id } : {}),
         label: v.label.trim(),
@@ -346,6 +373,7 @@ export function ProductForm({
     setSubmitting(false);
 
     if (!res.ok) { setError(data.error ?? "Something went wrong."); return; }
+    if (data.warning) window.alert(data.warning);
 
     router.push("/admin/products");
     router.refresh();
@@ -504,6 +532,38 @@ export function ProductForm({
           </svg>
           Add another size
         </button>
+      </section>
+
+      {/* ── Product-page options ─────────────────────────────────── */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">Customer options</h2>
+          <span className="text-xs text-gray-400">Required before Add to Cart</span>
+        </div>
+        <p className="mb-4 text-xs text-gray-400">
+          Turn off any choice that doesn&apos;t apply to this product (e.g. colours on coasters).
+        </p>
+
+        <div className="flex flex-col gap-4">
+          <Toggle
+            checked={!disabledOptions.includes(OPTION_COLOR)}
+            onChange={(v) => setOptionEnabled(OPTION_COLOR, v)}
+            label="Color (Dark / Pastel shades)"
+          />
+          <Toggle
+            checked={!disabledOptions.includes(OPTION_FINISH)}
+            onChange={(v) => setOptionEnabled(OPTION_FINISH, v)}
+            label="Finish (Blocked / Marble)"
+          />
+          {choiceAxes.map((ax) => (
+            <Toggle
+              key={ax.name}
+              checked={!disabledOptions.includes(choiceOptionKey(ax.name))}
+              onChange={(v) => setOptionEnabled(choiceOptionKey(ax.name), v)}
+              label={`${ax.name} (${ax.options.join(" / ")})`}
+            />
+          ))}
+        </div>
       </section>
 
       {/* ── Images ───────────────────────────────────────────────── */}

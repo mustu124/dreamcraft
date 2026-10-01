@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProductForm, type ProductFormInitialData } from "../../_components/ProductForm";
+import { resolveDisabledOptions } from "@/lib/config/productOptions";
 
 export const metadata: Metadata = { title: "Edit Product | Dreamcraft Admin" };
 
@@ -30,6 +31,8 @@ export default async function EditProductPage({
   if (!productRes.data) notFound();
 
   const p = productRes.data;
+  const cats = (catsRes.data ?? []) as { id: string; name: string; slug: string }[];
+  const categorySlug = cats.find((c) => c.id === p.category_id)?.slug ?? "";
 
   const initialData: ProductFormInitialData = {
     id:             p.id,
@@ -40,6 +43,7 @@ export default async function EditProductPage({
     description:    p.description ?? "",
     is_active:      p.is_active,
     is_bestseller:  p.is_bestseller,
+    disabled_options: resolveDisabledOptions(p.disabled_options, categorySlug),
     variants:       (p.product_variants ?? []).map((v: { id: string; label: string; price: number }) => ({
       id: v.id,
       label: v.label,
@@ -68,7 +72,7 @@ export default async function EditProductPage({
 
       <ProductForm
         initialData={initialData}
-        categories={(catsRes.data ?? []) as { id: string; name: string; slug: string }[]}
+        categories={cats}
         allSubcategories={
           (subsRes.data ?? []) as { id: string; category_id: string; name: string; slug: string }[]
         }

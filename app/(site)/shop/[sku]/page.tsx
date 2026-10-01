@@ -6,6 +6,7 @@ import type { ShopProduct } from "@/app/(site)/shop/ShopProductCard";
 import ProductGallery from "./ProductGallery";
 import ProductInfo from "./ProductInfo";
 import type { ProductInfoData } from "./ProductInfo";
+import { resolveDisabledOptions } from "@/lib/config/productOptions";
 
 // ── Raw Supabase shapes ───────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ type RawProductDetail = {
   sku: string;
   description: string | null;
   category_id: string | null;
+  disabled_options?: string[] | null;
   categories:    { name: string; slug: string } | null;
   subcategories: { name: string; slug: string } | null;
   product_images:   { url: string; sort_order: number }[];
@@ -66,7 +68,7 @@ export default async function ProductPage({
   const { data: rawProduct } = await supabase
     .from("products")
     .select(`
-      id, name, sku, description, category_id,
+      *,
       categories(name, slug),
       subcategories(name, slug),
       product_images(url, sort_order),
@@ -117,6 +119,7 @@ export default async function ProductPage({
     variants:         p.product_variants.map((v) => ({ id: v.id, label: v.label, price: v.price })),
     isCandleCategory: (p.categories?.slug ?? "") === "candles",
     showPlantsNote:   (p.categories?.slug ?? "") === "planters-organisers",
+    disabledOptions:  resolveDisabledOptions(p.disabled_options, p.categories?.slug ?? ""),
   };
 
   // ── Transform related into ShopProduct shape ──────────────

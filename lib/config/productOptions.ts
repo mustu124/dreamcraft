@@ -22,6 +22,8 @@
 //     carried to the cart/order as part of the artisan note, exactly like the
 //     colour label.
 
+import { COLOR_PICKER_EXCLUDED_CATEGORY_SLUG } from "./colorOptions";
+
 export const VARIANT_AXIS_LABELS: Record<string, string> = {
   "DC-CJ-004": "Type",  // Ocean Theme Candle — shell shapes
   "DC-TT-022": "Style", // Victorian Trinkets — Style 1 / Style 2
@@ -41,3 +43,27 @@ export const CHOICE_AXES: Record<string, ChoiceAxis[]> = {
   "DC-CC-005": [{ name: "Shape", options: ["Round", "Square", "Hexagon"] }],
   "DC-CC-002": [{ name: "Shape", options: ["Hexagon", "Square", "Round"] }],
 };
+
+// ── Admin on/off switches for the required pickers ───────────────────────────
+// products.disabled_options (text[]) lists the pickers the admin has switched
+// off for that product: "color" (shade group + shade), "finish" (Blocked /
+// Marble) and "choice:<axis name>" for a CHOICE_AXES entry (e.g.
+// "choice:Shape"). NULL means "never set" and falls back to the defaults
+// below, so products that predate the column behave exactly as before.
+
+export const OPTION_COLOR  = "color";
+export const OPTION_FINISH = "finish";
+export const choiceOptionKey = (axisName: string) => `choice:${axisName}`;
+
+// Customization products are fully bespoke via Contact/WhatsApp, so the
+// colour/finish pickers start switched off there.
+export function defaultDisabledOptions(categorySlug: string): string[] {
+  return categorySlug === COLOR_PICKER_EXCLUDED_CATEGORY_SLUG ? [OPTION_COLOR, OPTION_FINISH] : [];
+}
+
+export function resolveDisabledOptions(
+  stored: string[] | null | undefined,
+  categorySlug: string,
+): string[] {
+  return Array.isArray(stored) ? stored : defaultDisabledOptions(categorySlug);
+}
