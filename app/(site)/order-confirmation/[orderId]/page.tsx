@@ -55,8 +55,8 @@ export default async function OrderConfirmationPage({
   const order = orderResult.data;
 
   // Guard: show this page once the order has been placed (PAID, or
-  // AWAITING_VERIFICATION while we manually confirm the payment screenshot)
-  const visibleStatuses = ["PAID", "AWAITING_VERIFICATION"];
+  // PENDING / AWAITING_VERIFICATION while we manually confirm the payment)
+  const visibleStatuses = ["PAID", "PENDING", "AWAITING_VERIFICATION"];
   if (!order || !visibleStatuses.includes(order.status)) notFound();
 
   const invoice  = invoiceResult.data;
@@ -85,7 +85,7 @@ export default async function OrderConfirmationPage({
       <p className="mt-1 max-w-sm text-center font-body text-sm text-navy/50">
         {order.status === "PAID"
           ? `Thank you, ${order.customer_name.split(" ")[0]}. Your pieces are being made.`
-          : `Thank you, ${order.customer_name.split(" ")[0]}. We've received your payment screenshot and will confirm your order on WhatsApp shortly.`}
+          : `Thank you, ${order.customer_name.split(" ")[0]}. We'll confirm your order on WhatsApp once your payment is verified.`}
       </p>
 
       {/* ── Order card ────────────────────────────────────── */}

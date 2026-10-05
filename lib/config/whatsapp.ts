@@ -25,16 +25,15 @@ export type WhatsAppOrderDetails = {
   giftWrap?: boolean;
   giftWrapFee?: number;
   total: number;
-  screenshotUrl: string;
 };
 
 function rupee(n: number) {
   return `Rs. ${n.toLocaleString("en-IN")}`;
 }
 
-// Builds a wa.me deep link pre-filled with the order summary and the payment
-// screenshot URL, so the store owner receives everything needed to confirm
-// the order in one WhatsApp message.
+// Builds a wa.me deep link pre-filled with the order summary, so the store
+// owner receives everything needed to confirm the order in one WhatsApp
+// message once the customer has paid.
 export function buildOrderWhatsAppLink(order: WhatsAppOrderDetails): string {
   const lines = [
     `New order #${order.orderNumber}`,
@@ -57,7 +56,7 @@ export function buildOrderWhatsAppLink(order: WhatsAppOrderDetails): string {
     ...(order.addressLine2 ? [order.addressLine2] : []),
     `${order.city}, ${order.state} - ${order.pincode}`,
     "",
-    `Payment screenshot: ${order.screenshotUrl}`,
+    `I have completed the payment of ${rupee(order.total)} via UPI.`,
   ];
 
   const text = encodeURIComponent(lines.join("\n"));

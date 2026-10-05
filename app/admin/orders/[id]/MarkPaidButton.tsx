@@ -9,7 +9,7 @@ export default function MarkPaidButton({ orderId }: { orderId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
-    if (!confirm("Confirm you've verified the payment screenshot and mark this order as paid?")) return;
+    if (!confirm("Confirm you've verified the payment and mark this order as paid?")) return;
 
     setLoading(true);
     setError(null);

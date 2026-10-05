@@ -5,7 +5,7 @@ import { generateAndStoreInvoice } from "@/lib/invoice/generate";
 
 // POST /api/admin/orders/[id]/mark-paid
 // Admin-only. Used once the admin has manually checked the uploaded payment
-// screenshot and confirmed the payment — mirrors what /api/razorpay/verify
+// payment and confirmed it — mirrors what /api/razorpay/verify
 // did automatically, minus the signature check (there's no gateway signature
 // for a manual UPI payment).
 

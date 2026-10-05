@@ -46,7 +46,7 @@ const EMPTY_FORM: FormData = {
 type PageStatus =
   | "idle"              // form ready to submit
   | "submitting"        // POST /api/orders in flight
-  | "awaiting_payment"  // order created — showing QR + screenshot upload
+  | "awaiting_payment"  // order created — showing QR + WhatsApp confirm
   | "error";            // order creation failed
 
 // ── Indian states / UTs ───────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ export default function CheckoutPage() {
     }
   }
 
-  // ── Payment step — QR code + screenshot upload ─────────────
+  // ── Payment step — QR code + WhatsApp confirm ──────────────
   if (status === "awaiting_payment" && orderId && confirmedTotals) {
     return (
       <PaymentStep
@@ -423,18 +423,11 @@ export default function CheckoutPage() {
   );
 }
 
-// ── Payment step — QR code + screenshot upload ────────────────────────────────
+// ── Payment step — QR code + WhatsApp confirm ─────────────────────────────────
 // Shown once the order has been created (status PENDING). The customer scans
-// the QR, pays via any UPI app, then uploads a screenshot as proof. Uploading
-// stores the screenshot and flips the order to AWAITING_VERIFICATION — the
-// WhatsApp button afterwards is a notification convenience, not the thing
-// that records the order.
-
-// "idle"     — nothing picked yet
-// "selected" — a file is picked and previewed locally, not uploaded yet —
-//              the customer can still change it before confirming
-// "uploading"/"done"/"error" — the confirmed upload's own request state
-type UploadState = "idle" | "selected" | "uploading" | "done" | "error";
+// the QR, pays via any UPI app, then taps the WhatsApp button to send us the
+// order summary. That tap also flips the order to AWAITING_VERIFICATION so it
+// shows up in the admin panel as waiting for a manual payment check.
 
 function PaymentStep({
   orderId,
@@ -455,53 +448,8 @@ function PaymentStep({
   snapshot: { items: CartItem[]; address: FormData; giftWrap: boolean } | null;
   onConfirmed: () => void;
 }) {
-  const [uploadState,   setUploadState]   = useState<UploadState>("idle");
-  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
-  const [previewUrl,    setPreviewUrl]    = useState<string | null>(null);
-  const [uploadError,   setUploadError]   = useState<string | null>(null);
-  const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Picking a file only previews it locally — nothing is sent to the server
-  // yet, so the customer can pick a different one before confirming.
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setUploadState("selected");
-    setUploadError(null);
-  }
-
-  // Only now does the screenshot actually get uploaded and the order marked
-  // AWAITING_VERIFICATION — the customer has already confirmed it's the right one.
-  async function handleConfirmScreenshot() {
-    if (!selectedFile) return;
-    setUploadState("uploading");
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Upload failed. Please try again.");
-
-      setScreenshotUrl(data.url);
-      setUploadState("done");
-    } catch (err) {
-      setUploadState("error");
-      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
-    }
-  }
-
   function handleConfirm() {
-    if (!screenshotUrl || !snapshot) return;
+    if (!snapshot) return;
 
     const link = buildOrderWhatsAppLink({
       orderNumber: orderNumber ?? orderId.slice(-8).toUpperCase(),
@@ -524,11 +472,12 @@ function PaymentStep({
       giftWrap: snapshot.giftWrap,
       giftWrapFee,
       total,
-      screenshotUrl,
     });
 
     // Direct user-gesture click — safe from popup blockers.
     window.open(link, "_blank", "noopener,noreferrer");
+    // Best-effort: the confirmation page still shows if this request fails.
+    fetch(`/api/orders/${orderId}/payment-sent`, { method: "POST", keepalive: true }).catch(() => {});
     onConfirmed();
   }
 
@@ -541,7 +490,7 @@ function PaymentStep({
         <h1 className="mt-1 font-heading italic text-3xl text-navy">Complete Payment</h1>
         <p className="mt-2 font-body text-sm text-navy/55">
           Scan the QR code below and pay {rupee(total)} using any UPI app, then
-          upload a screenshot of the payment confirmation.
+          update us with your order on WhatsApp.
         </p>
 
         {/* QR code */}
@@ -562,88 +511,13 @@ function PaymentStep({
           </p>
         )}
 
-        {/* Screenshot upload */}
-        <div className="mt-6">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          {uploadState === "idle" && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-full border-2 border-navy/20 py-3.5 font-body text-sm font-medium text-navy transition-all duration-200 hover:border-terracotta hover:text-terracotta"
-            >
-              Upload Payment Screenshot
-            </button>
-          )}
-
-          {/* Picked but not yet confirmed — customer can still swap it out */}
-          {(uploadState === "selected" || uploadState === "error") && previewUrl && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-xl border border-navy/10 bg-blush/10 p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewUrl} alt="Payment screenshot preview" className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />
-                <div className="min-w-0 flex-1">
-                  {uploadState === "error" ? (
-                    <p className="font-body text-xs text-red-600">{uploadError}</p>
-                  ) : (
-                    <p className="font-body text-xs text-navy/55">Ready to confirm</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-0.5 font-body text-xs text-terracotta underline underline-offset-2"
-                  >
-                    Choose a different image
-                  </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleConfirmScreenshot}
-                className="w-full rounded-full bg-navy py-3 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-navy/90"
-              >
-                {uploadState === "error" ? "Try Again" : "Confirm This Screenshot"}
-              </button>
-            </div>
-          )}
-
-          {uploadState === "uploading" && (
-            <div className="flex items-center justify-center gap-2 rounded-full border-2 border-navy/10 py-3.5 font-body text-sm text-navy/50">
-              <SpinnerIcon /> Uploading screenshot…
-            </div>
-          )}
-
-          {uploadState === "done" && previewUrl && (
-            <div className="flex items-center gap-3 rounded-xl border border-navy/10 bg-blush/10 p-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="Payment screenshot preview" className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />
-              <div className="min-w-0 flex-1">
-                <p className="font-body text-xs font-medium text-green-700">✓ Screenshot uploaded</p>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-0.5 font-body text-xs text-terracotta underline underline-offset-2"
-                >
-                  Change screenshot
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
         <button
           type="button"
-          disabled={uploadState !== "done"}
+          disabled={!snapshot}
           onClick={handleConfirm}
-          className="mt-4 w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-6 w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Confirm Order via WhatsApp
+          Update Order on WhatsApp
         </button>
 
         <p className="mt-4 text-center font-body text-xs text-navy/40">
