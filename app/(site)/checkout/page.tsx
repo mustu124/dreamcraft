@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, cartLineKey, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
@@ -46,7 +46,6 @@ const EMPTY_FORM: FormData = {
 type PageStatus =
   | "idle"              // form ready to submit
   | "submitting"        // POST /api/orders in flight
-  | "awaiting_payment"  // order created — showing QR + WhatsApp confirm
   | "error";            // order creation failed
 
 // ── Indian states / UTs ───────────────────────────────────────────────────────
@@ -95,16 +94,7 @@ export default function CheckoutPage() {
 
   // ── Page status ────────────────────────────────────────────
   const [status,      setStatus]      = useState<PageStatus>("idle");
-  const [orderId,      setOrderId]     = useState<string | null>(null);
-  const [orderNumber,  setOrderNumber] = useState<string | number | null>(null);
   const [submitError, setSubmitError]  = useState<string | null>(null);
-  // Server-confirmed totals — authoritative over the client-side calc above,
-  // in case a price changed between add-to-cart and checkout.
-  const [confirmedTotals, setConfirmedTotals] = useState<{ subtotal: number; shipping: number; giftWrapFee: number; total: number } | null>(null);
-
-  // Snapshot of items/address/gift-wrap at the moment the order was placed —
-  // used to build the WhatsApp message even after the cart is cleared.
-  const orderSnapshotRef = useRef<{ items: CartItem[]; address: FormData; giftWrap: boolean } | null>(null);
 
   // ── Redirect if cart is empty after hydration ──────────────
   const [mounted, setMounted] = useState(false);
@@ -128,7 +118,10 @@ export default function CheckoutPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  // ── Form submit — creates the order, then moves to the payment step ───────
+  // ── Form submit — creates the order, then shares it on WhatsApp ───────────
+  // There is no on-site payment step: the order summary (with a link to each
+  // product) is sent straight to the store's WhatsApp, and payment is arranged
+  // in that chat.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -143,11 +136,22 @@ export default function CheckoutPage() {
     setStatus("submitting");
     setSubmitError(null);
 
+    // Open the WhatsApp tab now, while we're still inside the click — a
+    // window.open() after the awaits below would be caught by popup blockers.
+    // It's pointed at the real wa.me link once the order exists.
+    const waWindow = window.open("", "_blank");
+    if (waWindow) {
+      waWindow.opener = null;
+      waWindow.document.title = "Opening WhatsApp…";
+      waWindow.document.body.textContent = "Opening WhatsApp…";
+    }
+
     // Last-second re-check against the live catalogue — catches a price/size
     // change made while the customer was filling out this form, instead of
     // letting the order POST fail with a raw "variant not found" error.
     const { removed, updated } = await syncCart();
     if (removed.length > 0 || updated.length > 0) {
+      waWindow?.close();
       setStatus("error");
       setSubmitError(
         formatSyncNotice({ removed, updated })! + " Please review your cart and place the order again."
@@ -186,40 +190,50 @@ export default function CheckoutPage() {
       const orderData = await ordersRes.json();
       if (!ordersRes.ok) throw new Error(orderData.error ?? "Could not place order.");
 
-      orderSnapshotRef.current = { items, address: formData, giftWrap };
-      setOrderId(orderData.orderId);
-      setOrderNumber(orderData.orderNumber ?? null);
-      setConfirmedTotals({
+      const orderId: string = orderData.orderId;
+      const link = buildOrderWhatsAppLink({
+        orderNumber: orderData.orderNumber ?? orderId.slice(-8).toUpperCase(),
+        customerName: formData.fullName,
+        phone: formData.phone,
+        addressLine1: formData.addressLine1,
+        addressLine2: formData.addressLine2 || undefined,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        items: items.map((i) => ({
+          name: i.name,
+          variantLabel: i.variantLabel,
+          colorLabel: i.colorLabel,
+          qty: i.qty,
+          price: i.price,
+          url: `${window.location.origin}/shop/${encodeURIComponent(i.sku)}`,
+        })),
+        // Server-confirmed totals — authoritative over the client-side calc.
         subtotal: orderData.subtotal ?? subtotal,
         shipping: orderData.shipping ?? shipping,
+        giftWrap,
         giftWrapFee: orderData.giftWrapFee ?? giftWrapFee,
         total: orderData.total,
       });
-      setStatus("awaiting_payment");
+
+      // Flags the order as shared with the store (AWAITING_VERIFICATION).
+      // Best-effort: the confirmation page still shows if this request fails.
+      fetch(`/api/orders/${orderId}/payment-sent`, { method: "POST", keepalive: true }).catch(() => {});
+
+      clearCart();
+      if (waWindow) {
+        waWindow.location.href = link;
+        router.push(`/order-confirmation/${orderId}`);
+      } else {
+        // Popup blocked — send this tab to WhatsApp instead.
+        window.location.href = link;
+      }
 
     } catch (err) {
+      waWindow?.close();
       setStatus("error");
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
-  }
-
-  // ── Payment step — QR code + WhatsApp confirm ──────────────
-  if (status === "awaiting_payment" && orderId && confirmedTotals) {
-    return (
-      <PaymentStep
-        orderId={orderId}
-        orderNumber={orderNumber}
-        subtotal={confirmedTotals.subtotal}
-        shipping={confirmedTotals.shipping}
-        giftWrapFee={confirmedTotals.giftWrapFee}
-        total={confirmedTotals.total}
-        snapshot={orderSnapshotRef.current}
-        onConfirmed={() => {
-          clearCart();
-          router.push(`/order-confirmation/${orderId}`);
-        }}
-      />
-    );
   }
 
   // ── Form layout ────────────────────────────────────────────
@@ -398,12 +412,17 @@ export default function CheckoutPage() {
             {isWorking ? (
               <span className="flex items-center justify-center gap-2">
                 <SpinnerIcon />
-                Placing Order…
+                Sending Order…
               </span>
             ) : (
-              `Place Order · ${rupee(total)}`
+              `Send Order on WhatsApp · ${rupee(total)}`
             )}
           </button>
+
+          <p className="text-center font-body text-xs text-navy/40">
+            Your order details open in WhatsApp — just press send, and we&apos;ll
+            confirm the order and payment with you there.
+          </p>
 
           <p className="text-center font-body text-xs text-navy/40">
             By placing an order you agree to our{" "}
@@ -418,111 +437,6 @@ export default function CheckoutPage() {
         >
           <CheckoutSummary items={items} subtotal={subtotal} shipping={shipping} giftWrapFee={giftWrapFee} total={total} />
         </aside>
-      </div>
-    </div>
-  );
-}
-
-// ── Payment step — QR code + WhatsApp confirm ─────────────────────────────────
-// Shown once the order has been created (status PENDING). The customer scans
-// the QR, pays via any UPI app, then taps the WhatsApp button to send us the
-// order summary. That tap also flips the order to AWAITING_VERIFICATION so it
-// shows up in the admin panel as waiting for a manual payment check.
-
-function PaymentStep({
-  orderId,
-  orderNumber,
-  subtotal,
-  shipping,
-  giftWrapFee,
-  total,
-  snapshot,
-  onConfirmed,
-}: {
-  orderId: string;
-  orderNumber: string | number | null;
-  subtotal: number;
-  shipping: number;
-  giftWrapFee: number;
-  total: number;
-  snapshot: { items: CartItem[]; address: FormData; giftWrap: boolean } | null;
-  onConfirmed: () => void;
-}) {
-  function handleConfirm() {
-    if (!snapshot) return;
-
-    const link = buildOrderWhatsAppLink({
-      orderNumber: orderNumber ?? orderId.slice(-8).toUpperCase(),
-      customerName: snapshot.address.fullName,
-      phone: snapshot.address.phone,
-      addressLine1: snapshot.address.addressLine1,
-      addressLine2: snapshot.address.addressLine2 || undefined,
-      city: snapshot.address.city,
-      state: snapshot.address.state,
-      pincode: snapshot.address.pincode,
-      items: snapshot.items.map((i) => ({
-        name: i.name,
-        variantLabel: i.variantLabel,
-        colorLabel: i.colorLabel,
-        qty: i.qty,
-        price: i.price,
-      })),
-      subtotal,
-      shipping,
-      giftWrap: snapshot.giftWrap,
-      giftWrapFee,
-      total,
-    });
-
-    // Direct user-gesture click — safe from popup blockers.
-    window.open(link, "_blank", "noopener,noreferrer");
-    // Best-effort: the confirmation page still shows if this request fails.
-    fetch(`/api/orders/${orderId}/payment-sent`, { method: "POST", keepalive: true }).catch(() => {});
-    onConfirmed();
-  }
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-ivory px-4 py-16">
-      <div className="w-full max-w-md rounded-2xl border border-navy/8 bg-white p-8 shadow-sm">
-        <p className="font-body text-xs uppercase tracking-widest text-terracotta">
-          Order {orderNumber ? `#${orderNumber}` : ""} placed
-        </p>
-        <h1 className="mt-1 font-heading italic text-3xl text-navy">Complete Payment</h1>
-        <p className="mt-2 font-body text-sm text-navy/55">
-          Scan the QR code below and pay {rupee(total)} using any UPI app, then
-          update us with your order on WhatsApp.
-        </p>
-
-        {/* QR code */}
-        <div className="mx-auto mt-6 flex h-56 w-56 items-center justify-center overflow-hidden rounded-xl border border-navy/10 bg-blush/15">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/payment-qr.png"
-            alt="Scan to pay via UPI"
-            className="h-full w-full object-contain"
-          />
-        </div>
-        <p className="mt-3 text-center font-body text-lg font-semibold text-terracotta">
-          {rupee(total)}
-        </p>
-        {giftWrapFee > 0 && (
-          <p className="text-center font-body text-xs text-navy/40">
-            Includes {rupee(giftWrapFee)} gift box packing
-          </p>
-        )}
-
-        <button
-          type="button"
-          disabled={!snapshot}
-          onClick={handleConfirm}
-          className="mt-6 w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Update Order on WhatsApp
-        </button>
-
-        <p className="mt-4 text-center font-body text-xs text-navy/40">
-          We&apos;ll confirm your order on WhatsApp once payment is verified.
-        </p>
       </div>
     </div>
   );
@@ -603,7 +517,7 @@ function CheckoutSummary({
 
       <div className="mt-5 flex items-center justify-center gap-1.5 font-body text-[10px] text-navy/35">
         <LockIcon />
-        Pay via UPI QR code
+        Order &amp; payment confirmed on WhatsApp
       </div>
     </div>
   );

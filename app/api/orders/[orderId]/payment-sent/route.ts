@@ -5,9 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Public route (checkout has no session) — scoped tightly to a single order
 // that must already exist and not yet be finalized, so it can't be used to
 // tamper with unrelated or already-resolved orders.
-// Called when the customer taps "Confirm Order via WhatsApp" after paying by
-// UPI. Sets status to AWAITING_VERIFICATION so an admin can manually confirm
-// the payment before it's marked PAID.
+// Called from checkout as the order summary is handed off to WhatsApp. Sets
+// status to AWAITING_VERIFICATION so an admin can confirm the payment (agreed
+// over WhatsApp) before it's marked PAID.
 
 export async function POST(
   _req: NextRequest,

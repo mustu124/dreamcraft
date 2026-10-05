@@ -85,7 +85,7 @@ export default async function OrderConfirmationPage({
       <p className="mt-1 max-w-sm text-center font-body text-sm text-navy/50">
         {order.status === "PAID"
           ? `Thank you, ${order.customer_name.split(" ")[0]}. Your pieces are being made.`
-          : `Thank you, ${order.customer_name.split(" ")[0]}. We'll confirm your order on WhatsApp once your payment is verified.`}
+          : `Thank you, ${order.customer_name.split(" ")[0]}. Send the WhatsApp message that just opened and we'll confirm your order and payment with you there.`}
       </p>
 
       {/* ── Order card ────────────────────────────────────── */}
