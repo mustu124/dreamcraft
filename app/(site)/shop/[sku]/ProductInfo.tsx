@@ -66,18 +66,27 @@ function formatShade(s: ShadeSel, parts: ShadeParts): string | null {
 }
 
 // ── Description formatting ────────────────────────────────────────────────────
-// Breaks the description onto a new line right before "Size:"/"Sizes:" (with
-// or without an "Available" prefix), so the dimensions read as their own line
-// instead of running on from the marketing copy.
+// Descriptions are typed in the admin panel as plain text, so the line breaks
+// there are the formatting: a blank line (or several) starts a new paragraph,
+// a single line break starts a new line within it.
+//
+// Older single-line descriptions also get a line break right before
+// "Size:"/"Sizes:" (with or without an "Available" prefix), so the dimensions
+// read as their own line instead of running on from the marketing copy.
 
-function formatDescription(description: string) {
-  const parts = description.split(/(?=(?:Available\s+)?[Ss]izes?:)/);
-  return parts.map((part, i) => (
-    <span key={i}>
-      {i > 0 && <br />}
-      {part.trim()}
-    </span>
-  ));
+function descriptionParagraphs(description: string): string[] {
+  return description
+    .replace(/\r\n?/g, "\n")
+    .replace(/(?<=\S)[ \t]+((?:Available\s+)?[Ss]izes?:)/g, "\n$1")
+    .split(/\n[ \t]*\n\s*/)
+    .map((para) =>
+      para
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .filter(Boolean);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -395,9 +404,11 @@ export default function ProductInfo({
 
       {/* ── Description ───────────────────────────────────────── */}
       {product.description && (
-        <p className="font-body text-sm leading-relaxed text-navy/65 md:text-base">
-          {formatDescription(product.description)}
-        </p>
+        <div className="space-y-4 font-body text-sm leading-relaxed text-navy/65 md:text-base">
+          {descriptionParagraphs(product.description).map((para, i) => (
+            <p key={i} className="whitespace-pre-line">{para}</p>
+          ))}
+        </div>
       )}
 
       {/* ── Handcrafted note ──────────────────────────────────── */}
