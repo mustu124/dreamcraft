@@ -24,7 +24,10 @@ export default async function GalleryPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Gallery</h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Drag to reorder. Active images appear in the homepage gallery section.
+          The website gallery is built automatically from your active products, so it
+          always matches the shop. Photos here set the order (drag to reorder) and
+          caption for a product; switching one off hides that product from the gallery.
+          Photos that don&apos;t belong to an active product are not shown.
         </p>
       </div>
       <GalleryManager initialItems={(data ?? []) as GalleryRow[]} />

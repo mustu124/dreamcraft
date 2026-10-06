@@ -5,13 +5,12 @@ import BestsellersSection from "@/components/site/BestsellersSection";
 import BehindTheCraft from "@/components/site/BehindTheCraft";
 import TestimonialsCarousel from "@/components/site/TestimonialsCarousel";
 import GallerySection from "@/components/site/GallerySection";
-import AboutSection from "@/components/site/AboutSection";
 import type { Banner } from "@/components/site/HeroCarousel";
 import type { CategoryWithSubs } from "@/components/site/ShopByCategory";
 import type { BestsellerProduct } from "@/components/site/BestsellersSection";
 import type { ProcessClip } from "@/components/site/BehindTheCraft";
 import type { Testimonial } from "@/components/site/TestimonialsCarousel";
-import type { GalleryImage } from "@/components/site/GallerySection";
+import { getProductGallery } from "@/lib/gallery";
 
 // Raw shape returned by the Supabase bestsellers joined query
 type ProductRaw = {
@@ -38,9 +37,8 @@ export default async function HomePage() {
     { data: rawBestsellers },
     { data: rawClips },
     { data: rawTestimonials },
-    { data: rawGallery },
+    gallery,
     { data: rawCatImages },
-    { data: rawSkuImages },
   ] = await Promise.all([
     supabase
       .from("banners")
@@ -77,12 +75,9 @@ export default async function HomePage() {
       .eq("is_active", true)
       .order("sort_order"),
 
-    supabase
-      .from("gallery_images")
-      .select("id, image_url, caption")
-      .eq("is_active", true)
-      .order("sort_order")
-      .limit(12),
+    // Built from the live catalogue — see lib/gallery.ts. One extra so the
+    // section knows whether to show its "View Full Gallery" link.
+    getProductGallery(supabase, 13),
 
     // One product image per category — used to fill category cards
     supabase
@@ -91,10 +86,6 @@ export default async function HomePage() {
       .eq("is_active", true)
       .order("sort_order")
       .limit(60),
-
-    // sku ↔ image_url map — gallery photos are sourced 1:1 from product photos,
-    // so this makes each gallery tile link through to its product.
-    supabase.from("products").select("sku, product_images(url)"),
   ]);
 
   // Shape the raw response into what BestsellersSection expects.
@@ -119,15 +110,6 @@ export default async function HomePage() {
   const clips: ProcessClip[]       = (rawClips        ?? []) as ProcessClip[];
   const testimonials: Testimonial[] = (rawTestimonials ?? []) as Testimonial[];
 
-  const skuByUrl = new Map<string, string>();
-  for (const p of (rawSkuImages ?? []) as { sku: string; product_images: { url: string }[] }[]) {
-    for (const img of p.product_images ?? []) skuByUrl.set(img.url, p.sku);
-  }
-  const gallery: GalleryImage[] = ((rawGallery ?? []) as GalleryImage[]).map((g) => ({
-    ...g,
-    productSku: skuByUrl.get(g.image_url) ?? null,
-  }));
-
   // Build { categoryId → firstProductImageUrl } for the category cards
   const categoryImages: Record<string, string> = {};
   for (const prod of ((rawCatImages ?? []) as unknown as CatImageRaw[])) {
@@ -151,7 +133,6 @@ export default async function HomePage() {
       <BehindTheCraft clips={clips} />
       <TestimonialsCarousel testimonials={testimonials} />
       <GallerySection images={gallery} />
-      <AboutSection />
     </>
   );
 }

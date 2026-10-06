@@ -18,7 +18,7 @@ export default async function EditProductPage({
     supabase
       .from("products")
       .select(
-        `*, product_variants(id, label, price),
+        `*, product_variants(*),
          product_images(id, url, sort_order)`,
       )
       .eq("id", params.id)
@@ -44,10 +44,11 @@ export default async function EditProductPage({
     is_active:      p.is_active,
     is_bestseller:  p.is_bestseller,
     disabled_options: resolveDisabledOptions(p.disabled_options, categorySlug),
-    variants:       (p.product_variants ?? []).map((v: { id: string; label: string; price: number }) => ({
+    variants:       (p.product_variants ?? []).map((v: { id: string; label: string; price: number; image_url?: string | null }) => ({
       id: v.id,
       label: v.label,
       price: v.price,
+      image_url: v.image_url ?? null,
     })),
     images: (p.product_images ?? []).map((img: { id: string; url: string; sort_order: number }) => ({
       id:         img.id,

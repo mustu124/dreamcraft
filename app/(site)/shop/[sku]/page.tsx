@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ShopProductCard from "@/app/(site)/shop/ShopProductCard";
 import type { ShopProduct } from "@/app/(site)/shop/ShopProductCard";
-import ProductGallery from "./ProductGallery";
-import ProductInfo from "./ProductInfo";
+import ProductDetail from "./ProductDetail";
 import type { ProductInfoData } from "./ProductInfo";
 import { resolveDisabledOptions } from "@/lib/config/productOptions";
 
@@ -20,7 +19,7 @@ type RawProductDetail = {
   categories:    { name: string; slug: string } | null;
   subcategories: { name: string; slug: string } | null;
   product_images:   { url: string; sort_order: number }[];
-  product_variants: { id: string; label: string; price: number }[];
+  product_variants: { id: string; label: string; price: number; image_url?: string | null }[];
 };
 
 type RawRelated = {
@@ -72,7 +71,7 @@ export default async function ProductPage({
       categories(name, slug),
       subcategories(name, slug),
       product_images(url, sort_order),
-      product_variants(id, label, price)
+      product_variants(*)
     `)
     .eq("sku", params.sku)
     .eq("is_active", true)
@@ -116,7 +115,13 @@ export default async function ProductPage({
     subcategoryName:  p.subcategories?.name ?? null,
     subcategorySlug:  p.subcategories?.slug ?? null,
     images:           sortedImages,
-    variants:         p.product_variants.map((v) => ({ id: v.id, label: v.label, price: v.price })),
+    variants:         p.product_variants.map((v) => ({
+      id: v.id,
+      label: v.label,
+      price: v.price,
+      // Only honour a variant picture that is still one of the product's photos.
+      image: v.image_url && sortedImages.includes(v.image_url) ? v.image_url : null,
+    })),
     isCandleCategory: (p.categories?.slug ?? "") === "candles",
     showPlantsNote:   (p.categories?.slug ?? "") === "planters-organisers",
     disabledOptions:  resolveDisabledOptions(p.disabled_options, p.categories?.slug ?? ""),
@@ -146,17 +151,7 @@ export default async function ProductPage({
 
       {/* ── Two-column product section ──────────────────────── */}
       <div className="mx-auto max-w-7xl px-4 pt-20 pb-16 sm:px-6 md:pt-24 md:pb-20 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-
-          {/* LEFT: Gallery — sticky on desktop so it stays visible while
-              the right column scrolls through longer product info */}
-          <div className="lg:sticky lg:top-[80px] lg:self-start">
-            <ProductGallery images={product.images} name={product.name} />
-          </div>
-
-          {/* RIGHT: Product info — all interactive, must be client component */}
-          <ProductInfo product={product} />
-        </div>
+        <ProductDetail product={product} />
       </div>
 
       {/* ── You May Also Like ───────────────────────────────── */}

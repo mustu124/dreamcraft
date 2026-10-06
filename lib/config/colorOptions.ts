@@ -15,30 +15,27 @@ export type ColorShade = { name: string; hex: string };
 
 export const DARK_SHADES: ColorShade[] = [
   { name: "Black",      hex: "#1A1A1A" },
+  { name: "White",      hex: "#FFFFFF" },
   { name: "Red",        hex: "#B3202A" },
   { name: "Terracotta", hex: "#F07820" },
   { name: "Orange",     hex: "#E8630C" },
   { name: "Brown",      hex: "#5C4033" },
-  { name: "Violet",     hex: "#6D3AA8" },
   { name: "Blue",       hex: "#1D4ED8" },
   { name: "Green",      hex: "#1B5E3A" },
-  { name: "Yellow",     hex: "#C9971C" },
-  { name: "Mocha",      hex: "#6F4E37" },
+  { name: "Yellow",     hex: "#F7C600" },
   { name: "Gold",       hex: "#C9A227" },
 ];
 
 export const PASTEL_SHADES: ColorShade[] = [
-  { name: "Dijon Yellow", hex: "#D4B14A" },
+  { name: "Bright Yellow", hex: "#F7DC5B" },
   { name: "Teal",         hex: "#6FB3B0" },
   { name: "Sage green",   hex: "#9CAF88" },
   { name: "Peach",        hex: "#F5C4A0" },
   { name: "Baby Pink",    hex: "#F4C2C2" },
   { name: "Pearl white",  hex: "#F8F6F0" },
   { name: "Beige",        hex: "#E8DCC8" },
-  { name: "Cream",        hex: "#FBF3DE" },
   { name: "Warm grey",    hex: "#ABA49C" },
   { name: "Lavender",     hex: "#C6B6E3" },
-  { name: "Soft Mauve",   hex: "#D8A7B1" },
   { name: "Ice Blue",     hex: "#D3E7ED" },
 ];
 

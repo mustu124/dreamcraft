@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveDisabledOptions } from "@/lib/admin/saveDisabledOptions";
+import { VARIANT_IMAGE_WARNING, isMissingVariantImageColumn } from "@/lib/admin/variantImage";
 
 async function getUser() {
   const { data: { user } } = await createClient().auth.getUser();
@@ -97,14 +98,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const productId = product!.id;
 
+  type VariantInput = { label: string; price: number; image_url?: string | null };
+  const variantRows = (withImage: boolean) =>
+    (variants as VariantInput[]).map((v) => ({
+      product_id: productId,
+      label: v.label.trim(),
+      price: Math.round(v.price),
+      ...(withImage ? { image_url: v.image_url || null } : {}),
+    }));
+
+  // Retried without image_url if the column hasn't been added yet.
+  let variantImageWarning: string | null = null;
+  const insertVariants = async () => {
+    const res = await admin.from("product_variants").insert(variantRows(true));
+    if (!isMissingVariantImageColumn(res.error)) return res;
+    if ((variants as VariantInput[]).some((v) => v.image_url)) variantImageWarning = VARIANT_IMAGE_WARNING;
+    return admin.from("product_variants").insert(variantRows(false));
+  };
+
   const [variantsRes, imagesRes] = await Promise.all([
-    admin.from("product_variants").insert(
-      (variants as { label: string; price: number }[]).map((v) => ({
-        product_id: productId,
-        label: v.label.trim(),
-        price: Math.round(v.price),
-      })),
-    ),
+    insertVariants(),
     Array.isArray(images) && images.length > 0
       ? admin.from("product_images").insert(
           (images as { url: string; sort_order: number }[]).map((img) => ({
@@ -123,7 +136,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const warning = await saveDisabledOptions(admin, productId, disabled_options);
+  const warning =
+    (await saveDisabledOptions(admin, productId, disabled_options)) ?? variantImageWarning;
 
   return NextResponse.json({ id: productId, ...(warning ? { warning } : {}) }, { status: 201 });
 }

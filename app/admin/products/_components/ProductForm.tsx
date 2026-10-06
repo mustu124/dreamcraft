@@ -40,14 +40,15 @@ export type ProductFormInitialData = {
   is_active:      boolean;
   is_bestseller:  boolean;
   disabled_options: string[];
-  variants:       { id: string; label: string; price: number }[];
+  variants:       { id: string; label: string; price: number; image_url: string | null }[];
   images:         { id: string; url: string; sort_order: number }[];
 };
 
 type Category    = { id: string; name: string; slug: string };
 type Subcategory = { id: string; category_id: string; name: string; slug: string };
 
-type VariantItem = { _key: string; id?: string; label: string; price: string };
+// imageKey — _key of the product image shown when this variant is picked (optional).
+type VariantItem = { _key: string; id?: string; label: string; price: string; imageKey?: string };
 type ImageItem   = { _key: string; id?: string; url?: string; file?: File; preview: string };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -209,26 +210,27 @@ export function ProductForm({
     );
   }
 
-  // ── Variants ─────────────────────────────────────────────────────────────────
-  const [variants, setVariants] = useState<VariantItem[]>(
-    initialData?.variants.length
-      ? initialData.variants.map((v) => ({
-          _key: nextKey(),
-          id:    v.id,
-          label: v.label,
-          price: String(v.price),
-        }))
-      : [{ _key: nextKey(), label: "", price: "" }],
-  );
-
   // ── Images ────────────────────────────────────────────────────────────────────
-  const [images, setImages] = useState<ImageItem[]>(
+  const [images, setImages] = useState<ImageItem[]>(() =>
     (initialData?.images ?? []).map((img) => ({
       _key:    nextKey(),
       id:      img.id,
       url:     img.url,
       preview: img.url,
     })),
+  );
+
+  // ── Variants ─────────────────────────────────────────────────────────────────
+  const [variants, setVariants] = useState<VariantItem[]>(() =>
+    initialData?.variants.length
+      ? initialData.variants.map((v) => ({
+          _key: nextKey(),
+          id:    v.id,
+          label: v.label,
+          price: String(v.price),
+          imageKey: v.image_url ? images.find((img) => img.url === v.image_url)?._key : undefined,
+        }))
+      : [{ _key: nextKey(), label: "", price: "" }],
   );
 
   // ── SKU auto-suggest ──────────────────────────────────────────────────────────
@@ -270,6 +272,15 @@ export function ProductForm({
     setVariants((prev) => prev.map((v) => v._key === key ? { ...v, [field]: value } : v));
   }
 
+  // Picking the already-selected picture clears it — the link is optional.
+  function setVariantImage(key: string, imageKey: string) {
+    setVariants((prev) =>
+      prev.map((v) =>
+        v._key === key ? { ...v, imageKey: v.imageKey === imageKey ? undefined : imageKey } : v,
+      ),
+    );
+  }
+
   function removeVariant(key: string) {
     setVariants((prev) => prev.length > 1 ? prev.filter((v) => v._key !== key) : prev);
   }
@@ -296,6 +307,7 @@ export function ProductForm({
 
   function removeImage(key: string) {
     setImages((prev) => prev.filter((img) => img._key !== key));
+    setVariants((prev) => prev.map((v) => (v.imageKey === key ? { ...v, imageKey: undefined } : v)));
   }
 
   function handleImageDragEnd(event: DragEndEvent) {
@@ -325,6 +337,7 @@ export function ProductForm({
 
     // Upload any new image files
     const finalImages: { id?: string; url: string; sort_order: number }[] = [];
+    const urlByImageKey = new Map<string, string>();
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
@@ -332,6 +345,7 @@ export function ProductForm({
         try {
           const publicUrl = await uploadToStorage(img.file, "product-images");
           finalImages.push({ url: publicUrl, sort_order: i });
+          urlByImageKey.set(img._key, publicUrl);
         } catch (uploadErr) {
           setError(`Image upload failed: ${uploadErr instanceof Error ? uploadErr.message : "unknown error"}`);
           setSubmitting(false);
@@ -339,6 +353,7 @@ export function ProductForm({
         }
       } else if (img.url) {
         finalImages.push({ id: img.id, url: img.url, sort_order: i });
+        urlByImageKey.set(img._key, img.url);
       }
     }
 
@@ -355,6 +370,7 @@ export function ProductForm({
         ...(v.id ? { id: v.id } : {}),
         label: v.label.trim(),
         price: parseInt(v.price, 10),
+        image_url: (v.imageKey && urlByImageKey.get(v.imageKey)) || null,
         sort_order: i,
       })),
       images: finalImages,
@@ -489,38 +505,72 @@ export function ProductForm({
 
         <div className="space-y-2">
           {variants.map((v) => (
-            <div key={v._key} className="flex items-center gap-2">
-              <input
-                value={v.label}
-                onChange={(e) => updateVariant(v._key, "label", e.target.value)}
-                placeholder="Label (e.g. Small / 100ml)"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
-              />
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₹</span>
+            <div key={v._key} className="space-y-1.5">
+              <div className="flex items-center gap-2">
                 <input
-                  type="number"
-                  min="0"
-                  value={v.price}
-                  onChange={(e) => updateVariant(v._key, "price", e.target.value)}
-                  placeholder="Price"
-                  className="w-28 rounded-lg border border-gray-300 py-2 pl-7 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+                  value={v.label}
+                  onChange={(e) => updateVariant(v._key, "label", e.target.value)}
+                  placeholder="Label (e.g. Small / 100ml)"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
                 />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={v.price}
+                    onChange={(e) => updateVariant(v._key, "price", e.target.value)}
+                    placeholder="Price"
+                    className="w-28 rounded-lg border border-gray-300 py-2 pl-7 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeVariant(v._key)}
+                  disabled={variants.length === 1}
+                  className="rounded-lg border border-gray-200 p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+                  title="Remove variant"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => removeVariant(v._key)}
-                disabled={variants.length === 1}
-                className="rounded-lg border border-gray-200 p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Remove variant"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+
+              {/* Optional picture for this variant — chosen from the product's images */}
+              {variants.length > 1 && images.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                  <span className="mr-1 text-[11px] text-gray-400">Picture (optional):</span>
+                  {images.map((img) => (
+                    <button
+                      key={img._key}
+                      type="button"
+                      onClick={() => setVariantImage(v._key, img._key)}
+                      aria-pressed={v.imageKey === img._key}
+                      title={v.imageKey === img._key ? "Click to unlink" : "Show this picture for this option"}
+                      className={[
+                        "h-9 w-9 overflow-hidden rounded-md transition-all",
+                        v.imageKey === img._key
+                          ? "ring-2 ring-terracotta ring-offset-1"
+                          : "opacity-60 ring-1 ring-gray-200 hover:opacity-100",
+                      ].join(" ")}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.preview} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {variants.length > 1 && (
+          <p className="mt-3 text-[11px] text-gray-400">
+            Tip: link a picture to an option and the product page switches to it when a
+            customer picks that option. Leave it unlinked if the option has no picture of its own.
+          </p>
+        )}
 
         <button
           type="button"

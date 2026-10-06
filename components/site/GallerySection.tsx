@@ -58,7 +58,7 @@ export default function GallerySection({ images, showAll = false }: { images: Ga
                 Gallery
               </p>
               <h2 className="font-heading italic text-3xl text-navy md:text-4xl">
-                Styled By You
+                Styled For You
               </h2>
               <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-terracotta/40" />
               <p className="mx-auto mt-3 max-w-xl font-body text-sm text-navy/55 md:text-base">

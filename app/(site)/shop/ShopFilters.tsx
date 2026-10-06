@@ -69,10 +69,10 @@ export default function ShopFilters({
     <div className="mb-8">
 
       {/* ── Row 1: category pills + sort ───────────────────────── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
 
-        {/* Scrollable pill row — never wraps */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {/* Pills wrap onto as many rows as needed so every category is visible */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <FilterPill
             label="All"
             active={!activeCategory}
@@ -109,7 +109,7 @@ export default function ShopFilters({
       >
         <div className="min-h-0 overflow-hidden">
           {activeCatData && activeCatData.subcategories.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-3 scrollbar-hide">
+            <div className="flex flex-wrap items-center gap-2 pb-1 pt-3">
               <SubFilterPill
                 label={`All ${activeCatData.name}`}
                 active={!activeSubcategory}

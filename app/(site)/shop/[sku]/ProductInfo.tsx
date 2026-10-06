@@ -35,7 +35,8 @@ export type ProductInfoData = {
   subcategoryName: string | null;
   subcategorySlug: string | null;
   images: string[];
-  variants: { id: string; label: string; price: number }[];
+  // `image` — optional photo tied to this variant (admin panel, per variant).
+  variants: { id: string; label: string; price: number; image?: string | null }[];
   isCandleCategory: boolean;
   showPlantsNote: boolean;
   // Pickers the admin switched off for this product (see productOptions.ts).
@@ -81,7 +82,13 @@ function formatDescription(description: string) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ProductInfo({ product }: { product: ProductInfoData }) {
+export default function ProductInfo({
+  product,
+  onVariantImage,
+}: {
+  product: ProductInfoData;
+  onVariantImage?: (url: string) => void;
+}) {
   const { addItem }      = useCart();
   const router           = useRouter();
   const [variantIdx, setVariantIdx] = useState(0);
@@ -178,7 +185,7 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
       name:         product.name,
       variantLabel: variant!.label,
       price:        variant!.price,
-      image:        product.images[0] ?? "",
+      image:        variant!.image ?? product.images[0] ?? "",
       ...(colorLabel ? { colorLabel } : {}),
     };
   }
@@ -282,7 +289,10 @@ export default function ProductInfo({ product }: { product: ProductInfoData }) {
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setVariantIdx(i)}
+                onClick={() => {
+                  setVariantIdx(i);
+                  if (v.image) onVariantImage?.(v.image);
+                }}
                 aria-pressed={i === variantIdx}
                 className={[
                   "rounded-xl border px-3.5 py-2 font-body text-sm transition-all duration-200",

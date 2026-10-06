@@ -8,11 +8,20 @@ import Image from "next/image";
 export default function ProductGallery({
   images,
   name,
+  focus,
 }: {
   images: string[];
   name: string;
+  // Picture to jump to — set when the customer picks a variant that has its own photo.
+  focus?: { url: string; n: number } | null;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    if (!focus) return;
+    const idx = images.indexOf(focus.url);
+    if (idx >= 0) setActiveIdx(idx);
+  }, [focus, images]);
   const [zoomed, setZoomed]       = useState(false);
   const touchStartX               = useRef(0);
 

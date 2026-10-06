@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveDisabledOptions } from "@/lib/admin/saveDisabledOptions";
+import { VARIANT_IMAGE_WARNING, isMissingVariantImageColumn } from "@/lib/admin/variantImage";
 
 async function getUser() {
   const { data: { user } } = await createClient().auth.getUser();
@@ -85,7 +86,7 @@ export async function PATCH(
   }
 
   // ── Variants ───────────────────────────────────────────────────────────────
-  type VariantInput = { id?: string; label: string; price: number };
+  type VariantInput = { id?: string; label: string; price: number; image_url?: string | null };
   const incomingVariants = variants as VariantInput[];
   const incomingIds = incomingVariants.filter((v) => v.id).map((v) => v.id as string);
 
@@ -106,22 +107,27 @@ export async function PATCH(
     await admin.from("product_variants").delete().eq("id", varId);
   }
 
-  // Upsert incoming variants
+  // Upsert incoming variants. image_url (the optional per-variant picture) is
+  // dropped and the write retried if the column hasn't been added yet.
+  let variantImageWarning: string | null = null;
   for (const v of incomingVariants) {
-    if (v.id) {
-      const { error } = await admin.from("product_variants").update({
+    const write = (withImage: boolean) => {
+      const row = {
         label: v.label.trim(),
         price: Math.round(v.price),
-      }).eq("id", v.id);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    } else {
-      const { error } = await admin.from("product_variants").insert({
-        product_id: params.id,
-        label: v.label.trim(),
-        price: Math.round(v.price),
-      });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        ...(withImage ? { image_url: v.image_url || null } : {}),
+      };
+      return v.id
+        ? admin.from("product_variants").update(row).eq("id", v.id)
+        : admin.from("product_variants").insert({ product_id: params.id, ...row });
+    };
+
+    let { error } = await write(true);
+    if (isMissingVariantImageColumn(error)) {
+      if (v.image_url) variantImageWarning = VARIANT_IMAGE_WARNING;
+      ({ error } = await write(false));
     }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   // ── Images ────────────────────────────────────────────────────────────────
@@ -157,7 +163,8 @@ export async function PATCH(
     }
   }
 
-  const warning = await saveDisabledOptions(admin, params.id, disabled_options);
+  const warning =
+    (await saveDisabledOptions(admin, params.id, disabled_options)) ?? variantImageWarning;
 
   return NextResponse.json({ success: true, ...(warning ? { warning } : {}) });
 }

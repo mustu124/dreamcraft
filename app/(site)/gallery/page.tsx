@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import GallerySection from "@/components/site/GallerySection";
-import type { GalleryImage } from "@/components/site/GallerySection";
+import { getProductGallery } from "@/lib/gallery";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -12,26 +12,8 @@ export const metadata: Metadata = {
 
 export default async function GalleryPage() {
   const supabase = createClient();
-  const [{ data }, { data: products }] = await Promise.all([
-    supabase
-      .from("gallery_images")
-      .select("id, image_url, caption")
-      .eq("is_active", true)
-      .order("sort_order"),
-    supabase.from("products").select("sku, product_images(url)"),
-  ]);
-
-  // Gallery photos are sourced 1:1 from product photos, so match back to the
-  // product by exact image URL to make each gallery tile shoppable.
-  const skuByUrl = new Map<string, string>();
-  for (const p of products ?? []) {
-    for (const img of p.product_images ?? []) skuByUrl.set(img.url, p.sku);
-  }
-
-  const images: GalleryImage[] = (data ?? []).map((g) => ({
-    ...g,
-    productSku: skuByUrl.get(g.image_url) ?? null,
-  }));
+  // Built from the live catalogue — see lib/gallery.ts.
+  const images = await getProductGallery(supabase);
 
   return (
     <>

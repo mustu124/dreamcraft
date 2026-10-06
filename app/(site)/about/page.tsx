@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AboutSection from "@/components/site/AboutSection";
 
 export const metadata: Metadata = {
   title: "About Dreamcraft",
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
+      {/* ── More Than Decor ──────────────────────────────────────────────────── */}
+      <AboutSection />
+
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="bg-blush/30 py-16 md:py-24">
         <div className="mx-auto max-w-3xl px-5 text-center">
