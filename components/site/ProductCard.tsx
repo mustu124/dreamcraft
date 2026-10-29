@@ -1,12 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { BestsellerProduct } from "./BestsellersSection";
+import PriceTag from "./PriceTag";
 
 export default function ProductCard({ product }: { product: BestsellerProduct }) {
-  const priceLabel = product.minPrice != null
-    ? `${product.hasMultipleVariants ? "From " : ""}₹${product.minPrice.toLocaleString("en-IN")}`
-    : null;
-
   return (
     <Link href={`/shop/${product.sku}`} className="group flex flex-col">
 
@@ -32,6 +29,12 @@ export default function ProductCard({ product }: { product: BestsellerProduct })
           </div>
         )}
 
+        {!product.inStock && (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-navy/85 px-2.5 py-1 font-body text-[10px] font-semibold uppercase tracking-wider text-ivory">
+            Out of stock
+          </span>
+        )}
+
         {/* Quick-view pill on hover */}
         <div className="absolute inset-x-0 bottom-0 flex justify-center pb-3 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <span className="rounded-full bg-ivory/90 px-3 py-1 font-body text-[11px] font-semibold text-navy shadow backdrop-blur-sm">
@@ -50,10 +53,12 @@ export default function ProductCard({ product }: { product: BestsellerProduct })
         <span className="font-heading italic text-[15px] leading-snug text-navy line-clamp-2 transition-colors duration-200 group-hover:text-terracotta">
           {product.name}
         </span>
-        {priceLabel && (
-          <span className="font-body text-sm font-semibold text-navy/80">
-            {priceLabel}
-          </span>
+        {product.minPrice != null && (
+          <PriceTag
+            price={product.minPrice}
+            discountPercent={product.discountPercent}
+            prefix={product.hasMultipleVariants ? "From " : ""}
+          />
         )}
       </div>
     </Link>

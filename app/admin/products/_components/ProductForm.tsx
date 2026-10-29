@@ -27,6 +27,7 @@ import {
   choiceOptionKey,
   defaultDisabledOptions,
 } from "@/lib/config/productOptions";
+import { MAX_DISCOUNT_PERCENT, formatINR, normaliseDiscount, originalPrice } from "@/lib/config/pricing";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ export type ProductFormInitialData = {
   description:    string;
   is_active:      boolean;
   is_bestseller:  boolean;
+  discount_percent: number;
+  in_stock:       boolean;
   disabled_options: string[];
   variants:       { id: string; label: string; price: number; image_url: string | null }[];
   images:         { id: string; url: string; sort_order: number }[];
@@ -197,6 +200,8 @@ export function ProductForm({
   const [description,   setDescription]  = useState(initialData?.description     ?? "");
   const [isActive,      setIsActive]      = useState(initialData?.is_active       ?? true);
   const [isBestseller,  setIsBestseller]  = useState(initialData?.is_bestseller  ?? false);
+  const [inStock,       setInStock]       = useState(initialData?.in_stock        ?? true);
+  const [discount,      setDiscount]      = useState(String(initialData?.discount_percent || ""));
 
   // ── Product-page pickers (switched-off keys, see productOptions.ts) ───────────
   const [disabledOptions, setDisabledOptions] = useState<string[]>(
@@ -365,6 +370,8 @@ export function ProductForm({
       description:    description.trim() || null,
       is_active:      isActive,
       is_bestseller:  isBestseller,
+      discount_percent: normaliseDiscount(discount),
+      in_stock:       inStock,
       disabled_options: disabledOptions,
       variants: validVariants.map((v, i) => ({
         ...(v.id ? { id: v.id } : {}),
@@ -492,6 +499,38 @@ export function ProductForm({
               label="Bestseller"
               icon={<StarIcon filled={isBestseller} />}
             />
+            <Toggle
+              checked={inStock}
+              onChange={setInStock}
+              label={inStock ? "In stock" : "Out of stock (shown, but can't be ordered)"}
+            />
+          </div>
+
+          {/* Discount */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">Discount %</label>
+            <div className="relative">
+              <input
+                type="number"
+                min={0}
+                max={MAX_DISCOUNT_PERCENT}
+                step={1}
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              {(() => {
+                const d = normaliseDiscount(discount);
+                const price = parseInt(variants[0]?.price ?? "", 10);
+                if (!d) return "Leave empty for no discount tag.";
+                if (!price) return `Shows a crossed-out price and "${d}% OFF".`;
+                return `Customers pay ${formatINR(price)} — shown as ${formatINR(originalPrice(price, d)!)} crossed out, ${d}% OFF.`;
+              })()}
+            </p>
           </div>
         </div>
       </section>

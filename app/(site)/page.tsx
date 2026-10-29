@@ -8,6 +8,7 @@ import GallerySection from "@/components/site/GallerySection";
 import type { Banner } from "@/components/site/HeroCarousel";
 import type { CategoryWithSubs } from "@/components/site/ShopByCategory";
 import type { BestsellerProduct } from "@/components/site/BestsellersSection";
+import { normaliseDiscount } from "@/lib/config/pricing";
 import type { ProcessClip } from "@/components/site/BehindTheCraft";
 import type { Testimonial } from "@/components/site/TestimonialsCarousel";
 import { getProductGallery } from "@/lib/gallery";
@@ -20,6 +21,8 @@ type ProductRaw = {
   categories: { name: string; slug: string } | null;
   product_images: { url: string; sort_order: number }[];
   product_variants: { price: number }[];
+  discount_percent?: number | null;
+  in_stock?: boolean | null;
 };
 
 type CatImageRaw = {
@@ -54,7 +57,7 @@ export default async function HomePage() {
 
     supabase
       .from("products")
-      .select("id, name, sku, categories(name, slug), product_images(url, sort_order), product_variants(price)")
+      .select("*, categories(name, slug), product_images(url, sort_order), product_variants(price)")
       .eq("is_bestseller", true)
       .eq("is_active", true)
       .order("sort_order")
@@ -104,6 +107,8 @@ export default async function HomePage() {
       image: firstImage,
       minPrice: prices.length > 0 ? Math.min(...prices) : null,
       hasMultipleVariants: prices.length > 1,
+      discountPercent: normaliseDiscount(p.discount_percent),
+      inStock: p.in_stock !== false,
     };
   });
 

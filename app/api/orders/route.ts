@@ -87,6 +87,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Failed to verify product prices" }, { status: 500 });
     }
 
+    // Items may have been carted before the product was marked out of stock.
+    // select("*") so this is a no-op on a database without the in_stock column.
+    const productIds = Array.from(new Set(variants.map((v) => v.product_id)));
+    const { data: stockRows } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    const soldOut = (stockRows ?? []).filter((p: { in_stock?: boolean | null }) => p.in_stock === false);
+    if (soldOut.length) {
+      return NextResponse.json(
+        { error: `Sorry, ${soldOut.map((p: { name: string }) => p.name).join(", ")} is out of stock — please remove it from your cart.` },
+        { status: 409 },
+      );
+    }
+
     // ── 3. Compute totals server-side ─────────────────────────
     let subtotal = 0;
     const lineItems: {

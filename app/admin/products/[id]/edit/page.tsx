@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProductForm, type ProductFormInitialData } from "../../_components/ProductForm";
 import { resolveDisabledOptions } from "@/lib/config/productOptions";
+import { normaliseDiscount } from "@/lib/config/pricing";
 
 export const metadata: Metadata = { title: "Edit Product | Dreamcraft Admin" };
 
@@ -43,6 +44,8 @@ export default async function EditProductPage({
     description:    p.description ?? "",
     is_active:      p.is_active,
     is_bestseller:  p.is_bestseller,
+    discount_percent: normaliseDiscount(p.discount_percent),
+    in_stock:       p.in_stock !== false,
     disabled_options: resolveDisabledOptions(p.disabled_options, categorySlug),
     variants:       (p.product_variants ?? []).map((v: { id: string; label: string; price: number; image_url?: string | null }) => ({
       id: v.id,

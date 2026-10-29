@@ -15,6 +15,8 @@ type ProductRow = {
   sku:           string;
   is_active:     boolean;
   is_bestseller: boolean;
+  in_stock?:     boolean;
+  discount_percent?: number;
   categories:    { id: string; name: string } | null;
   product_variants: Variant[];
   product_images:   Image[];
@@ -123,7 +125,7 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search, categoryFilter, statusFilter, bestFilter, fetchProducts]);
 
-  async function handleToggle(id: string, field: "is_active" | "is_bestseller", value: boolean) {
+  async function handleToggle(id: string, field: "is_active" | "is_bestseller" | "in_stock", value: boolean) {
     setTogglingId(id);
     setProducts((prev) => prev.map((p) => p.id === id ? { ...p, [field]: value } : p));
 
@@ -136,6 +138,8 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
     if (!res.ok) {
       // Revert optimistic update
       setProducts((prev) => prev.map((p) => p.id === id ? { ...p, [field]: !value } : p));
+      const data = await res.json().catch(() => ({}));
+      if (data.error) window.alert(data.error);
     }
     setTogglingId(null);
   }
@@ -193,13 +197,14 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
       {/* ── Table ───────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* Header */}
-        <div className="grid grid-cols-[48px_1fr_120px_110px_80px_80px_120px] items-center gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+        <div className="grid grid-cols-[48px_1fr_120px_110px_80px_80px_80px_120px] items-center gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5">
           <div />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Product</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Category</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Price</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">★ Best</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Active</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">In stock</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Actions</span>
         </div>
 
@@ -216,7 +221,7 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
               return (
                 <div
                   key={p.id}
-                  className="grid grid-cols-[48px_1fr_120px_110px_80px_80px_120px] items-center gap-3 px-4 py-3 hover:bg-gray-50/50"
+                  className="grid grid-cols-[48px_1fr_120px_110px_80px_80px_80px_120px] items-center gap-3 px-4 py-3 hover:bg-gray-50/50"
                 >
                   {/* Thumbnail */}
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100">
@@ -243,7 +248,12 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
                   </p>
 
                   {/* Price range */}
-                  <p className="text-sm text-gray-700">{priceRange(p.product_variants)}</p>
+                  <p className="text-sm text-gray-700">
+                    {priceRange(p.product_variants)}
+                    {!!p.discount_percent && (
+                      <span className="ml-1 text-[11px] font-semibold text-terracotta">−{p.discount_percent}%</span>
+                    )}
+                  </p>
 
                   {/* Bestseller toggle */}
                   <div className="flex items-center gap-1.5">
@@ -259,6 +269,13 @@ export function ProductList({ categories }: { categories: FilterCategory[] }) {
                   <Toggle
                     checked={p.is_active}
                     onChange={(v) => handleToggle(p.id, "is_active", v)}
+                    disabled={isSaving}
+                  />
+
+                  {/* In-stock toggle */}
+                  <Toggle
+                    checked={p.in_stock !== false}
+                    onChange={(v) => handleToggle(p.id, "in_stock", v)}
                     disabled={isSaving}
                   />
 

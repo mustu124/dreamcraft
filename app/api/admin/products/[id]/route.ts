@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveDisabledOptions } from "@/lib/admin/saveDisabledOptions";
+import { SALE_COLUMNS_SQL, isMissingSaleColumn, saveSaleFields } from "@/lib/admin/saveSaleFields";
 import { VARIANT_IMAGE_WARNING, isMissingVariantImageColumn } from "@/lib/admin/variantImage";
 
 async function getUser() {
@@ -35,7 +36,7 @@ export async function GET(
 }
 
 // ── PATCH /api/admin/products/[id] ────────────────────────────────────────────
-// Handles both full edits and quick single-field toggles (is_active, is_bestseller).
+// Handles both full edits and quick single-field toggles (is_active, is_bestseller, in_stock).
 
 export async function PATCH(
   req: NextRequest,
@@ -49,20 +50,27 @@ export async function PATCH(
 
   const admin = createAdminClient();
 
-  // ── Quick-toggle path (is_active / is_bestseller only) ─────────────────────
-  if (Object.keys(body).every((k) => k === "is_active" || k === "is_bestseller")) {
+  // ── Quick-toggle path (is_active / is_bestseller / in_stock only) ─────────
+  const TOGGLES = ["is_active", "is_bestseller", "in_stock"];
+  if (Object.keys(body).every((k) => TOGGLES.includes(k))) {
     const update: Record<string, boolean> = {};
-    if (typeof body.is_active === "boolean")     update.is_active    = body.is_active;
-    if (typeof body.is_bestseller === "boolean") update.is_bestseller = body.is_bestseller;
+    for (const k of TOGGLES) if (typeof body[k] === "boolean") update[k] = body[k] as boolean;
 
     const { error } = await admin.from("products").update(update).eq("id", params.id);
+    if (isMissingSaleColumn(error)) {
+      return NextResponse.json(
+        { error: `The in_stock column is missing. Run in the Supabase SQL editor: ${SALE_COLUMNS_SQL}` },
+        { status: 500 },
+      );
+    }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   }
 
   // ── Full edit path ─────────────────────────────────────────────────────────
   const { name, sku, category_id, subcategory_id, description,
-          is_active, is_bestseller, disabled_options, variants, images } = body;
+          is_active, is_bestseller, discount_percent, in_stock,
+          disabled_options, variants, images } = body;
 
   if (typeof name !== "string" || !name.trim())
     return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -164,7 +172,9 @@ export async function PATCH(
   }
 
   const warning =
-    (await saveDisabledOptions(admin, params.id, disabled_options)) ?? variantImageWarning;
+    (await saveDisabledOptions(admin, params.id, disabled_options)) ??
+    (await saveSaleFields(admin, params.id, discount_percent, in_stock)) ??
+    variantImageWarning;
 
   return NextResponse.json({ success: true, ...(warning ? { warning } : {}) });
 }

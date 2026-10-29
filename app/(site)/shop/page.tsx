@@ -5,6 +5,7 @@ import ShopFilters from "./ShopFilters";
 import ShopProductCard from "./ShopProductCard";
 import type { FilterCategory, SortKey } from "./ShopFilters";
 import type { ShopProduct } from "./ShopProductCard";
+import { normaliseDiscount } from "@/lib/config/pricing";
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ type RawProduct = {
   name: string;
   sku: string;
   created_at: string;
+  discount_percent?: number | null;
+  in_stock?: boolean | null;
   categories: { name: string; slug: string } | null;
   product_images: { url: string; sort_order: number }[];
   product_variants: { id: string; label: string; price: number }[];
@@ -70,7 +73,7 @@ export default async function ShopPage({
   let query = supabase
     .from("products")
     .select(`
-      id, name, sku, created_at,
+      *,
       categories(name, slug),
       product_images(url, sort_order),
       product_variants(id, label, price)
@@ -142,6 +145,8 @@ export default async function ShopPage({
       minPrice:           prices.length ? Math.min(...prices) : null,
       variants:           p.product_variants.map((v) => ({ id: v.id, label: v.label, price: v.price })),
       hasMultipleVariants: p.product_variants.length > 1,
+      discountPercent:    normaliseDiscount(p.discount_percent),
+      inStock:            p.in_stock !== false,
     };
   });
 

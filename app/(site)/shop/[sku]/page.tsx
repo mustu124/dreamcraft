@@ -6,6 +6,7 @@ import type { ShopProduct } from "@/app/(site)/shop/ShopProductCard";
 import ProductDetail from "./ProductDetail";
 import type { ProductInfoData } from "./ProductInfo";
 import { resolveDisabledOptions } from "@/lib/config/productOptions";
+import { normaliseDiscount } from "@/lib/config/pricing";
 
 // ── Raw Supabase shapes ───────────────────────────────────────────────────────
 
@@ -16,6 +17,8 @@ type RawProductDetail = {
   description: string | null;
   category_id: string | null;
   disabled_options?: string[] | null;
+  discount_percent?: number | null;
+  in_stock?: boolean | null;
   categories:    { name: string; slug: string } | null;
   subcategories: { name: string; slug: string } | null;
   product_images:   { url: string; sort_order: number }[];
@@ -26,6 +29,8 @@ type RawRelated = {
   id: string;
   name: string;
   sku: string;
+  discount_percent?: number | null;
+  in_stock?: boolean | null;
   categories:       { name: string; slug: string } | null;
   product_images:   { url: string; sort_order: number }[];
   product_variants: { id: string; label: string; price: number }[];
@@ -86,7 +91,7 @@ export default async function ProductPage({
     ? await supabase
         .from("products")
         .select(`
-          id, name, sku,
+          *,
           categories(name, slug),
           product_images(url, sort_order),
           product_variants(id, label, price)
@@ -125,6 +130,8 @@ export default async function ProductPage({
     isCandleCategory: (p.categories?.slug ?? "") === "candles",
     showPlantsNote:   (p.categories?.slug ?? "") === "planters-organisers",
     disabledOptions:  resolveDisabledOptions(p.disabled_options, p.categories?.slug ?? ""),
+    discountPercent:  normaliseDiscount(p.discount_percent),
+    inStock:          p.in_stock !== false,
   };
 
   // ── Transform related into ShopProduct shape ──────────────
@@ -141,6 +148,8 @@ export default async function ProductPage({
       minPrice:            prices.length ? Math.min(...prices) : null,
       variants:            r.product_variants,
       hasMultipleVariants: r.product_variants.length > 1,
+      discountPercent:     normaliseDiscount(r.discount_percent),
+      inStock:             r.in_stock !== false,
     };
   });
 

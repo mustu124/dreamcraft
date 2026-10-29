@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/contexts/CartContext";
 import { PRICE_UNIT_LABELS } from "@/lib/config/priceUnitLabels";
+import PriceTag from "@/components/site/PriceTag";
 import {
   VARIANT_AXIS_LABELS,
   MULTI_COLOR_SLOTS,
@@ -41,6 +42,9 @@ export type ProductInfoData = {
   showPlantsNote: boolean;
   // Pickers the admin switched off for this product (see productOptions.ts).
   disabledOptions: string[];
+  // Display-only "% OFF" tag; the variant price is still what's charged.
+  discountPercent: number;
+  inStock: boolean;
 };
 
 // One colour/finish selection. A product normally has a single one of these;
@@ -182,7 +186,7 @@ export default function ProductInfo({
   }
   const colorLabel = noteSegments.length ? noteSegments.join("; ") : null;
 
-  const canSubmit = !!variant && shadesDone && axesDone;
+  const canSubmit = product.inStock && !!variant && shadesDone && axesDone;
 
   // Each addItem increments by 1; calling qty times gives the user-selected count.
   // React 18 applies reducer dispatches sequentially even when batched for rendering.
@@ -224,10 +228,6 @@ export default function ProductInfo({
     (product.variants.length === 1 && variant && variant.label.toLowerCase() !== "standard"
       ? variant.label.toLowerCase()
       : null);
-
-  const priceFormatted = variant
-    ? `₹${variant.price.toLocaleString("en-IN")}`
-    : null;
 
   const handcraftedNote = product.isCandleCategory
     ? "Hand-poured in premium soy wax for a clean, long-lasting burn."
@@ -278,13 +278,19 @@ export default function ProductInfo({
       </div>
 
       {/* ── Price ─────────────────────────────────────────────── */}
-      {priceFormatted && (
-        <p className="font-body text-2xl font-semibold text-navy">
-          {priceFormatted}
-          {priceQualifier && (
-            <span className="ml-1.5 text-base font-normal text-navy/50">{priceQualifier}</span>
+      {variant && (
+        <div className="flex flex-col gap-2">
+          <PriceTag price={variant.price} discountPercent={product.discountPercent} size="lg">
+            {priceQualifier && (
+              <span className="text-base font-normal text-navy/50">{priceQualifier}</span>
+            )}
+          </PriceTag>
+          {!product.inStock && (
+            <span className="w-fit rounded-full bg-navy/85 px-3 py-1 font-body text-[11px] font-semibold uppercase tracking-wider text-ivory">
+              Out of stock
+            </span>
           )}
-        </p>
+        </div>
       )}
 
       {/* ── Variant selector (only when multiple variants exist) ─ */}
@@ -385,18 +391,26 @@ export default function ProductInfo({
           onClick={handleAddToCart}
           className="w-full rounded-full bg-terracotta py-3.5 font-body text-sm font-medium text-ivory shadow-sm transition-all duration-200 hover:bg-terracotta/90 hover:shadow-md disabled:opacity-40"
         >
-          Add to Cart
+          {product.inStock ? "Add to Cart" : "Out of Stock"}
         </button>
 
         {/* Buy Now — secondary */}
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={handleBuyNow}
-          className="w-full rounded-full border-2 border-navy py-3.5 font-body text-sm font-medium text-navy transition-all duration-200 hover:bg-navy hover:text-ivory disabled:opacity-40"
-        >
-          Buy Now
-        </button>
+        {product.inStock ? (
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={handleBuyNow}
+            className="w-full rounded-full border-2 border-navy py-3.5 font-body text-sm font-medium text-navy transition-all duration-200 hover:bg-navy hover:text-ivory disabled:opacity-40"
+          >
+            Buy Now
+          </button>
+        ) : (
+          <p className="text-center font-body text-xs text-navy/50">
+            Currently unavailable —{" "}
+            <Link href="/contact" className="text-terracotta hover:underline">ask us</Link>{" "}
+            when it&apos;ll be back.
+          </p>
+        )}
       </div>
 
       {/* ── Divider ───────────────────────────────────────────── */}

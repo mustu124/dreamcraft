@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/contexts/CartContext";
+import PriceTag from "@/components/site/PriceTag";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Exported so page.tsx can build this shape server-side.
@@ -20,6 +21,8 @@ export type ShopProduct = {
   minPrice: number | null;
   variants: ShopVariant[];
   hasMultipleVariants: boolean;
+  discountPercent: number;   // display-only "% OFF" tag (lib/config/pricing.ts)
+  inStock: boolean;
 };
 
 // ── Card ──────────────────────────────────────────────────────────────────────
@@ -32,10 +35,6 @@ export default function ShopProductCard({ product }: { product: ShopProduct }) {
   const primaryImg    = product.images[0] ?? null;
   const secondImg     = product.images[1] ?? null;
   const isPlaceholder = !primaryImg || primaryImg === "/placeholder-product.jpg";
-
-  const priceLabel = product.minPrice != null
-    ? `${product.hasMultipleVariants ? "From " : ""}₹${product.minPrice.toLocaleString("en-IN")}`
-    : null;
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -139,6 +138,12 @@ export default function ShopProductCard({ product }: { product: ShopProduct }) {
           )}
         </Link>
 
+        {!product.inStock && (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-navy/85 px-2.5 py-1 font-body text-[10px] font-semibold uppercase tracking-wider text-ivory">
+            Out of stock
+          </span>
+        )}
+
         {/* ── Cart / variant button — appears on card hover ──────── */}
         {/*
          * Positioned inside the image wrapper for correct bottom-right
@@ -146,56 +151,58 @@ export default function ShopProductCard({ product }: { product: ShopProduct }) {
          * ref is on the wrapper so click-outside detection works for the
          * popover (which is a child of this same div).
          */}
-        <div
-          ref={popoverRef}
-          className="absolute bottom-2 right-2 z-10"
-        >
-          <button
-            type="button"
-            aria-label={`Add ${product.name} to cart`}
-            onClick={product.hasMultipleVariants
-              ? () => setPopoverOpen((o) => !o)
-              : addSingle}
-            className={[
-              "flex h-9 w-9 items-center justify-center rounded-full",
-              "bg-ivory shadow-md",
-              "transition-all duration-200",
-              // Fade in when any part of the card is hovered
-              "opacity-0 group-hover:opacity-100",
-              "hover:bg-terracotta hover:text-ivory hover:scale-105",
-            ].join(" ")}
+        {product.inStock && (
+          <div
+            ref={popoverRef}
+            className="absolute bottom-2 right-2 z-10"
           >
-            <BagPlusIcon />
-          </button>
-
-          {/* Variant quick-pick popover */}
-          {popoverOpen && (
-            <div
-              role="listbox"
-              aria-label="Select size"
-              className="absolute bottom-full right-0 z-20 mb-2 w-52 overflow-hidden rounded-xl border border-navy/10 bg-ivory shadow-lg"
+            <button
+              type="button"
+              aria-label={`Add ${product.name} to cart`}
+              onClick={product.hasMultipleVariants
+                ? () => setPopoverOpen((o) => !o)
+                : addSingle}
+              className={[
+                "flex h-9 w-9 items-center justify-center rounded-full",
+                "bg-ivory shadow-md",
+                "transition-all duration-200",
+                // Fade in when any part of the card is hovered
+                "opacity-0 group-hover:opacity-100",
+                "hover:bg-terracotta hover:text-ivory hover:scale-105",
+              ].join(" ")}
             >
-              <p className="px-3 pb-2 pt-3 font-body text-[10px] uppercase tracking-widest text-navy/40">
-                Select size
-              </p>
-              {product.variants.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  onClick={() => addVariant(v)}
-                  className="flex w-full items-center justify-between px-3 py-2.5 font-body text-sm text-navy transition-colors hover:bg-blush/35 last:rounded-b-xl"
-                >
-                  <span>{v.label}</span>
-                  <span className="text-navy/50">
-                    ₹{v.price.toLocaleString("en-IN")}
-                  </span>
-                </button>
-              ))}
-            </div>
+              <BagPlusIcon />
+            </button>
+
+            {/* Variant quick-pick popover */}
+            {popoverOpen && (
+              <div
+                role="listbox"
+                aria-label="Select size"
+                className="absolute bottom-full right-0 z-20 mb-2 w-52 overflow-hidden rounded-xl border border-navy/10 bg-ivory shadow-lg"
+              >
+                <p className="px-3 pb-2 pt-3 font-body text-[10px] uppercase tracking-widest text-navy/40">
+                  Select size
+                </p>
+                {product.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onClick={() => addVariant(v)}
+                    className="flex w-full items-center justify-between px-3 py-2.5 font-body text-sm text-navy transition-colors hover:bg-blush/35 last:rounded-b-xl"
+                  >
+                    <span>{v.label}</span>
+                    <span className="text-navy/50">
+                      ₹{v.price.toLocaleString("en-IN")}
+                    </span>
+                  </button>
+                ))}
+              </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Text info ──────────────────────────────────────────────── */}
@@ -213,10 +220,13 @@ export default function ShopProductCard({ product }: { product: ShopProduct }) {
           {product.name}
         </Link>
 
-        {priceLabel && (
-          <span className="mt-0.5 font-body text-sm font-semibold text-navy">
-            {priceLabel}
-          </span>
+        {product.minPrice != null && (
+          <PriceTag
+            price={product.minPrice}
+            discountPercent={product.discountPercent}
+            prefix={product.hasMultipleVariants ? "From " : ""}
+            className="mt-0.5"
+          />
         )}
       </div>
     </div>

@@ -13,6 +13,8 @@ export type BestsellerProduct = {
   image: string | null;
   minPrice: number | null;
   hasMultipleVariants: boolean;
+  discountPercent: number;
+  inStock: boolean;
 };
 
 // ── Section ───────────────────────────────────────────────────────────────────
