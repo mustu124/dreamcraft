@@ -135,7 +135,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const shipping    = calcShipping(subtotal);
+    const shipping    = calcShipping(subtotal, { city: address.city, pincode: address.pincode });
     const wantsGiftWrap = giftWrap === true;
     const giftWrapFee   = wantsGiftWrap ? GIFT_WRAP_FEE_INR : 0;
     const total = subtotal + shipping + giftWrapFee;

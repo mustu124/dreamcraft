@@ -4,7 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, cartLineKey, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
-import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import {
+  calcShipping, rupee, GIFT_WRAP_FEE_INR,
+  BANGALORE_SHIPPING_FEE_INR, STANDARD_SHIPPING_FEE_INR,
+} from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
@@ -83,11 +86,13 @@ export default function CheckoutPage() {
   const { items, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
 
   const subtotal = totalPrice;
-  const shipping = calcShipping(subtotal);
 
   // ── Form state ─────────────────────────────────────────────
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [errors,   setErrors]   = useState<FormErrors>({});
+
+  // Follows the address as it's typed — Bangalore pays the local rate.
+  const shipping = calcShipping(subtotal, { city: formData.city, pincode: formData.pincode });
 
   const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
   const total       = subtotal + shipping + giftWrapFee;
@@ -501,6 +506,11 @@ function CheckoutSummary({
             {shipping === 0 ? "Free" : rupee(shipping)}
           </span>
         </div>
+        <p className="text-[11px] text-navy/40">
+          {shipping === BANGALORE_SHIPPING_FEE_INR
+            ? "Bangalore delivery rate applied."
+            : `${rupee(BANGALORE_SHIPPING_FEE_INR)} within Bangalore, ${rupee(STANDARD_SHIPPING_FEE_INR)} elsewhere in India.`}
+        </p>
         {giftWrapFee > 0 && (
           <div className="flex justify-between">
             <span className="text-navy/60">Gift box packing</span>

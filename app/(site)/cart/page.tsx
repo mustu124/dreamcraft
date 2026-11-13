@@ -3,7 +3,9 @@
 import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
-import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import {
+  rupee, GIFT_WRAP_FEE_INR, BANGALORE_SHIPPING_FEE_INR, STANDARD_SHIPPING_FEE_INR,
+} from "@/lib/config/shipping";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
   if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
@@ -23,9 +25,9 @@ export default function CartPage() {
   const cartNotice = formatSyncNotice(syncNotice);
 
   const subtotal    = totalPrice;
-  const shipping    = calcShipping(subtotal);
+  // Shipping depends on the delivery address, which is only known at checkout.
   const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
-  const total       = subtotal + shipping + giftWrapFee;
+  const total       = subtotal + giftWrapFee;
   const isEmpty     = items.length === 0;
 
   return (
@@ -83,7 +85,6 @@ export default function CartPage() {
               <OrderSummary
                 items={items}
                 subtotal={subtotal}
-                shipping={shipping}
                 giftWrap={giftWrap}
                 onGiftWrapChange={setGiftWrap}
                 giftWrapFee={giftWrapFee}
@@ -192,7 +193,6 @@ function CartLineItem({
 function OrderSummary({
   items,
   subtotal,
-  shipping,
   giftWrap,
   onGiftWrapChange,
   giftWrapFee,
@@ -200,7 +200,6 @@ function OrderSummary({
 }: {
   items: CartItem[];
   subtotal: number;
-  shipping: number;
   giftWrap: boolean;
   onGiftWrapChange: (value: boolean) => void;
   giftWrapFee: number;
@@ -240,11 +239,10 @@ function OrderSummary({
       {/* Subtotal + shipping */}
       <div className="space-y-2.5">
         <SummaryRow label="Subtotal" value={rupee(subtotal)} />
-        <SummaryRow
-          label="Shipping"
-          value={shipping === 0 ? "Free" : rupee(shipping)}
-          valueClass={shipping === 0 ? "text-green-600" : undefined}
-        />
+        <SummaryRow label="Shipping" value="At checkout" valueClass="text-navy/50" />
+        <p className="font-body text-[11px] text-navy/40">
+          {rupee(BANGALORE_SHIPPING_FEE_INR)} within Bangalore, {rupee(STANDARD_SHIPPING_FEE_INR)} elsewhere in India.
+        </p>
         {giftWrapFee > 0 && (
           <SummaryRow label="Gift box packing" value={rupee(giftWrapFee)} />
         )}
@@ -252,7 +250,9 @@ function OrderSummary({
 
       {/* Total */}
       <div className="mt-4 flex items-center justify-between border-t border-navy/8 pt-4">
-        <span className="font-body text-base font-semibold text-navy">Total</span>
+        <span className="font-body text-base font-semibold text-navy">
+          Total <span className="text-xs font-normal text-navy/45">(excl. shipping)</span>
+        </span>
         <span className="font-body text-lg font-bold text-navy">{rupee(total)}</span>
       </div>
 
