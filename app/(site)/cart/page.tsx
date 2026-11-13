@@ -3,9 +3,7 @@
 import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
-import {
-  rupee, GIFT_WRAP_FEE_INR, BANGALORE_SHIPPING_FEE_INR, STANDARD_SHIPPING_FEE_INR,
-} from "@/lib/config/shipping";
+import { rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
   if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
@@ -240,9 +238,6 @@ function OrderSummary({
       <div className="space-y-2.5">
         <SummaryRow label="Subtotal" value={rupee(subtotal)} />
         <SummaryRow label="Shipping" value="At checkout" valueClass="text-navy/50" />
-        <p className="font-body text-[11px] text-navy/40">
-          {rupee(BANGALORE_SHIPPING_FEE_INR)} within Bangalore, {rupee(STANDARD_SHIPPING_FEE_INR)} elsewhere in India.
-        </p>
         {giftWrapFee > 0 && (
           <SummaryRow label="Gift box packing" value={rupee(giftWrapFee)} />
         )}

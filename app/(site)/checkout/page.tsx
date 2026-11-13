@@ -4,10 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, cartLineKey, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
-import {
-  calcShipping, rupee, GIFT_WRAP_FEE_INR,
-  BANGALORE_SHIPPING_FEE_INR, STANDARD_SHIPPING_FEE_INR,
-} from "@/lib/config/shipping";
+import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
@@ -506,11 +503,6 @@ function CheckoutSummary({
             {shipping === 0 ? "Free" : rupee(shipping)}
           </span>
         </div>
-        <p className="text-[11px] text-navy/40">
-          {shipping === BANGALORE_SHIPPING_FEE_INR
-            ? "Bangalore delivery rate applied."
-            : `${rupee(BANGALORE_SHIPPING_FEE_INR)} within Bangalore, ${rupee(STANDARD_SHIPPING_FEE_INR)} elsewhere in India.`}
-        </p>
         {giftWrapFee > 0 && (
           <div className="flex justify-between">
             <span className="text-navy/60">Gift box packing</span>
