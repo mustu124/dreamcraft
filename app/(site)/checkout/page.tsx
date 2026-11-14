@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart, cartLineKey, type CartItem, type CartSyncResult } from "@/contexts/CartContext";
 import { calcShipping, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { buildOrderWhatsAppLink } from "@/lib/config/whatsapp";
+import { storageImageUrl } from "@/lib/images/variants";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
   if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
@@ -466,7 +467,7 @@ function CheckoutSummary({
             <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-blush/25">
               {item.image && item.image !== "/placeholder-product.jpg" ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.image} alt="" className="h-full w-full object-cover" />
+                <img src={storageImageUrl(item.image, 480)} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <span className="font-heading italic text-xs text-terracotta/40">

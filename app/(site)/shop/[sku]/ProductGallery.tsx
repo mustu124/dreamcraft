@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { storageImageUrl } from "@/lib/images/variants";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ export default function ProductGallery({
               ].join(" ")}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt="" draggable={false} className="h-full w-full object-cover" />
+              <img src={storageImageUrl(img, 480)} alt="" draggable={false} className="h-full w-full object-cover" />
             </button>
           ))}
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { storageImageUrl } from "@/lib/images/variants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -182,7 +183,7 @@ function Avatar({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={photoUrl}
+        src={storageImageUrl(photoUrl, 480)}
         alt={name}
         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
       />

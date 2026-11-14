@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { storageImageUrl } from "@/lib/images/variants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ function ClipCard({
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-blush/40 shadow-sm transition-shadow duration-300 group-hover:shadow-md">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={clip.thumbnail_url}
+          src={storageImageUrl(clip.thumbnail_url, 960)}
           alt={clip.title}
           className="h-full w-full object-cover"
           loading="lazy"

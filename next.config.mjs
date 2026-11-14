@@ -14,11 +14,17 @@ const nextConfig = {
   },
 
   images: {
-    // Serve images as-is instead of through Vercel's image optimizer.
-    // The optimizer's monthly transformation quota was being exhausted,
-    // after which it returns 402s and images render broken across the site.
-    // Supabase Storage already serves these files from its own CDN.
-    unoptimized: true,
+    // No Vercel image optimizer (its monthly quota ran out and broke images
+    // with 402s). Instead the loader maps each requested width onto the
+    // pre-sized WebP copies kept in Supabase Storage (lib/images/variants.ts),
+    // so a 200px product card downloads a ~20 KB file, not a 3 MB original.
+    // Supabase bills every byte served from Storage as egress.
+    loader: "custom",
+    loaderFile: "./lib/images/loader.ts",
+    // Match the stored copies (w480 / w960 / full 1600) so srcset has no
+    // duplicate entries that resolve to the same file.
+    deviceSizes: [480, 960, 1600],
+    imageSizes: [96, 240],
     remotePatterns: [
       ...(supabaseHostname
         ? [

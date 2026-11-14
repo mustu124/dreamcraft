@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import { storageImageUrl } from "@/lib/images/variants";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
   if (!notice || (notice.removed.length === 0 && notice.updated.length === 0)) return null;
@@ -145,7 +146,7 @@ function CartLineItem({
           </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.image} alt={item.name} className="h-full w-full object-cover" draggable={false} />
+          <img src={storageImageUrl(item.image, 480)} alt={item.name} className="h-full w-full object-cover" draggable={false} />
         )}
       </div>
 

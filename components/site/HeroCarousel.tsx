@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { storageImageUrl } from "@/lib/images/variants";
 
 export type Banner = {
   id: string;
@@ -57,7 +58,7 @@ export default function HeroCarousel({ banners }: { banners: Banner[] }) {
           const slideContent = (
             <>
               <picture className="absolute inset-0">
-                <source media="(max-width: 767px)" srcSet={banner.mobile_image_url} />
+                <source media="(max-width: 767px)" srcSet={storageImageUrl(banner.mobile_image_url, 960)} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={banner.image_url}
