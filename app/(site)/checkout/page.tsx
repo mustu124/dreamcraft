@@ -81,7 +81,7 @@ function validate(d: FormData): FormErrors {
 
 export default function CheckoutPage() {
   const router           = useRouter();
-  const { items, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
+  const { items, totalItems, totalPrice, clearCart, syncCart, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
 
   const subtotal = totalPrice;
 
@@ -89,8 +89,9 @@ export default function CheckoutPage() {
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [errors,   setErrors]   = useState<FormErrors>({});
 
-  // Follows the address as it's typed — Bangalore pays the local rate.
-  const shipping = calcShipping(subtotal, { city: formData.city, pincode: formData.pincode });
+  // Follows the address as it's typed (Bangalore always pays the lower rate)
+  // and the number of items in the cart.
+  const shipping = calcShipping(totalItems, { city: formData.city, pincode: formData.pincode });
 
   const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
   const total       = subtotal + shipping + giftWrapFee;

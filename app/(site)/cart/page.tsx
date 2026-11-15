@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { CartItem, CartSyncResult } from "@/contexts/CartContext";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
-import { rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
+import { calcShipping, shippingKnownWithoutAddress, rupee, GIFT_WRAP_FEE_INR } from "@/lib/config/shipping";
 import { storageImageUrl } from "@/lib/images/variants";
 
 function formatSyncNotice(notice: CartSyncResult | null): string | null {
@@ -17,16 +17,18 @@ function formatSyncNotice(notice: CartSyncResult | null): string | null {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CartPage() {
-  const { items, totalPrice, setQty, removeItem, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
+  const { items, totalItems, totalPrice, setQty, removeItem, syncNotice, clearSyncNotice, giftWrap, setGiftWrap } = useCart();
 
   // The provider re-resolves the cart against the live catalogue right after
   // hydrating it — surface the result here until the customer dismisses it.
   const cartNotice = formatSyncNotice(syncNotice);
 
   const subtotal    = totalPrice;
-  // Shipping depends on the delivery address, which is only known at checkout.
+  // A single item ships at the same rate everywhere; for more, the fee depends
+  // on the delivery address, which is only known at checkout.
+  const shipping    = shippingKnownWithoutAddress(totalItems) ? calcShipping(totalItems) : null;
   const giftWrapFee = giftWrap ? GIFT_WRAP_FEE_INR : 0;
-  const total       = subtotal + giftWrapFee;
+  const total       = subtotal + (shipping ?? 0) + giftWrapFee;
   const isEmpty     = items.length === 0;
 
   return (
@@ -84,6 +86,7 @@ export default function CartPage() {
               <OrderSummary
                 items={items}
                 subtotal={subtotal}
+                shipping={shipping}
                 giftWrap={giftWrap}
                 onGiftWrapChange={setGiftWrap}
                 giftWrapFee={giftWrapFee}
@@ -192,6 +195,7 @@ function CartLineItem({
 function OrderSummary({
   items,
   subtotal,
+  shipping,
   giftWrap,
   onGiftWrapChange,
   giftWrapFee,
@@ -199,6 +203,7 @@ function OrderSummary({
 }: {
   items: CartItem[];
   subtotal: number;
+  shipping: number | null;
   giftWrap: boolean;
   onGiftWrapChange: (value: boolean) => void;
   giftWrapFee: number;
@@ -238,7 +243,11 @@ function OrderSummary({
       {/* Subtotal + shipping */}
       <div className="space-y-2.5">
         <SummaryRow label="Subtotal" value={rupee(subtotal)} />
-        <SummaryRow label="Shipping" value="At checkout" valueClass="text-navy/50" />
+        {shipping == null ? (
+          <SummaryRow label="Shipping" value="At checkout" valueClass="text-navy/50" />
+        ) : (
+          <SummaryRow label="Shipping" value={rupee(shipping)} />
+        )}
         {giftWrapFee > 0 && (
           <SummaryRow label="Gift box packing" value={rupee(giftWrapFee)} />
         )}
@@ -247,7 +256,10 @@ function OrderSummary({
       {/* Total */}
       <div className="mt-4 flex items-center justify-between border-t border-navy/8 pt-4">
         <span className="font-body text-base font-semibold text-navy">
-          Total <span className="text-xs font-normal text-navy/45">(excl. shipping)</span>
+          Total
+          {shipping == null && (
+            <span className="ml-1 text-xs font-normal text-navy/45">(excl. shipping)</span>
+          )}
         </span>
         <span className="font-body text-lg font-bold text-navy">{rupee(total)}</span>
       </div>
